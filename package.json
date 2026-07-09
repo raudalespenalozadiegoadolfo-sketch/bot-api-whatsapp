@@ -1,0 +1,24 @@
+{
+  "name": "marisco-alegre-pro-6-3-real",
+  "version": "6.3.0",
+  "private": true,
+  "description": "Marisco Alegre PRO 6.0 basado en el proyecto real: bot, panel y tienda web",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "check": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.9.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

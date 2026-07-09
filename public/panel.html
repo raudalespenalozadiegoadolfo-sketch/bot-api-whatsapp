@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Marisco Alegre | Panel PRO</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f6f6f4;
+      --panel: #ffffff;
+      --ink: #101114;
+      --muted: #6b7280;
+      --line: #e8e8e3;
+      --dark: #101114;
+      --green: #07a35a;
+      --orange: #ff5a1f;
+      --yellow: #f6c343;
+      --red: #ef4444;
+      --blue: #2563eb;
+      --shadow: 0 18px 50px rgba(16,17,20,.08);
+      --radius: 28px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+    }
+
+    aside {
+      background: var(--dark);
+      color: #fff;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 18px;
+      background: #fff;
+      color: var(--dark);
+      display: grid;
+      place-items: center;
+      font-size: 26px;
+      box-shadow: inset 0 0 0 3px rgba(255,90,31,.18);
+    }
+
+    .brand h1 {
+      font-size: 18px;
+      line-height: 1.1;
+      font-weight: 900;
+    }
+
+    .brand p {
+      color: #a3a3a3;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .nav button {
+      border: 0;
+      padding: 15px 16px;
+      border-radius: 18px;
+      cursor: pointer;
+      background: transparent;
+      color: #d4d4d4;
+      text-align: left;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: .2s;
+    }
+
+    .nav button:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .nav button.active { background: #fff; color: var(--dark); }
+
+    .pill {
+      min-width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.12);
+      color: inherit;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .nav button.active .pill { background: var(--orange); color: #fff; }
+
+    .side-card {
+      margin-top: auto;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 24px;
+      padding: 18px;
+    }
+
+    .side-card .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      background: #22c55e;
+      border-radius: 50%;
+      box-shadow: 0 0 0 6px rgba(34,197,94,.16);
+    }
+
+    .side-card p { color: #b9b9b9; font-size: 12px; line-height: 1.5; }
+
+    main { padding: 30px; }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 26px;
+    }
+
+    .title h2 {
+      font-size: clamp(28px, 4vw, 46px);
+      letter-spacing: -1.8px;
+      font-weight: 950;
+    }
+
+    .title p {
+      color: var(--muted);
+      margin-top: 6px;
+      font-weight: 600;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .search {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px 16px;
+      min-width: 260px;
+      box-shadow: var(--shadow);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .search input {
+      border: 0;
+      outline: 0;
+      width: 100%;
+      font: inherit;
+      background: transparent;
+      font-weight: 600;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 18px;
+      padding: 14px 18px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: .2s;
+      font-family: inherit;
+    }
+
+    .btn:hover { transform: translateY(-1px); filter: brightness(.98); }
+    .btn-dark { background: var(--dark); color: #fff; }
+    .btn-orange { background: var(--orange); color: #fff; }
+    .btn-green { background: var(--green); color: #fff; }
+    .btn-light { background: #f1f1ed; color: var(--dark); }
+    .btn-red { background: #fee2e2; color: #b91c1c; }
+    .btn-blue { background: #dbeafe; color: #1d4ed8; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
+      gap: 16px;
+      margin-bottom: 26px;
+    }
+
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .stat .icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: #f1f1ed;
+      margin-bottom: 14px;
+      font-size: 22px;
+    }
+
+    .stat strong {
+      font-size: 30px;
+      font-weight: 950;
+      letter-spacing: -1px;
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      font-weight: 900;
+      margin-top: 4px;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      gap: 14px;
+    }
+
+    .section-head h3 {
+      font-size: 20px;
+      font-weight: 950;
+      letter-spacing: -.4px;
+    }
+
+    .section-head p {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    .cards {
+      display: grid;
+      gap: 14px;
+    }
+
+    .order-card {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 18px;
+      background: #fff;
+      transition: .2s;
+    }
+
+    .order-card:hover {
+      border-color: #d7d7cf;
+      transform: translateY(-1px);
+    }
+
+    .order-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .customer h4 {
+      font-size: 17px;
+      font-weight: 950;
+      margin-bottom: 4px;
+    }
+
+    .customer p {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      word-break: break-all;
+    }
+
+    .badge {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 950;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .b-confirmado { background: #fff7ed; color: #c2410c; }
+    .b-cocina { background: #fef3c7; color: #92400e; }
+    .b-en_camino { background: #dcfce7; color: #166534; }
+    .b-armando { background: #eef2ff; color: #3730a3; }
+    .b-entregado { background: #dcfce7; color: #166534; }
+    .b-cancelado { background: #fee2e2; color: #991b1b; }
+
+    .items {
+      display: grid;
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      color: #2f3137;
+      font-size: 14px;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px dashed #ecece7;
+    }
+
+    .item:last-child { border-bottom: 0; }
+
+    .qty {
+      background: #f2f2ee;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 950;
+    }
+
+    .total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      margin-top: 12px;
+    }
+
+    .total span { color: var(--muted); font-size: 13px; font-weight: 900; }
+    .total strong { font-size: 24px; font-weight: 950; }
+
+    .meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 10px;
+    }
+
+    .order-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .order-actions .btn {
+      padding: 11px 12px;
+      border-radius: 14px;
+      font-size: 12px;
+      flex: 1;
+      min-width: 115px;
+    }
+
+    .hidden { display: none !important; }
+
+    .empty {
+      padding: 70px 20px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty .emoji { font-size: 54px; margin-bottom: 12px; }
+    .empty h4 { color: var(--ink); font-size: 18px; font-weight: 950; margin-bottom: 6px; }
+
+    .right-panel {
+      display: grid;
+      gap: 20px;
+    }
+
+    .mini-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .mini-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px;
+      background: #f8f8f5;
+      border-radius: 18px;
+      font-weight: 800;
+    }
+
+    .mini-row span { color: var(--muted); font-size: 13px; }
+    .mini-row strong { font-size: 15px; }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--dark);
+      color: #fff;
+      padding: 15px 18px;
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      transform: translateY(120px);
+      opacity: 0;
+      transition: .25s;
+      z-index: 100;
+      font-weight: 900;
+      max-width: 360px;
+    }
+
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.error { background: #991b1b; }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(16,17,20,.52);
+      backdrop-filter: blur(8px);
+      display: none;
+      place-items: center;
+      z-index: 200;
+      padding: 20px;
+    }
+
+    .modal.show { display: grid; }
+
+    .modal-card {
+      width: min(440px, 100%);
+      background: #fff;
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: 0 30px 90px rgba(0,0,0,.28);
+    }
+
+    .modal-card h3 {
+      font-size: 24px;
+      font-weight: 950;
+      margin-bottom: 8px;
+    }
+
+    .modal-card p {
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 18px;
+    }
+
+    .modal-card input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 15px;
+      font: inherit;
+      margin-bottom: 14px;
+      outline: none;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .modal-actions .btn { flex: 1; }
+
+    @media (max-width: 1100px) {
+      .layout { grid-template-columns: 1fr; }
+      aside {
+        position: static;
+        height: auto;
+        border-radius: 0 0 30px 30px;
+      }
+      .content-grid { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 640px) {
+      main { padding: 18px; }
+      .topbar { flex-direction: column; align-items: stretch; }
+      .actions { flex-direction: column; align-items: stretch; }
+      .search { min-width: 0; }
+      .stats { grid-template-columns: 1fr; }
+      .order-top { flex-direction: column; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="layout">
+    <aside>
+      <div class="brand">
+        <div class="brand-logo">🦐</div>
+        <div>
+          <h1>Marisco Alegre</h1>
+          <p>Panel PRO</p>
+        </div>
+      </div>
+
+      <div class="nav">
+        <button id="navActivos" class="active" onclick="showView('activos')">
+          📋 Pedidos activos
+          <span class="pill" id="pillActivos">0</span>
+        </button>
+
+        <button id="navHistorial" onclick="showView('historial')">
+          📦 Historial
+          <span class="pill" id="pillHistorial">0</span>
+        </button>
+      </div>
+
+      <div class="side-card">
+        <div class="status"><span class="dot"></span> Bot en vivo</div>
+        <p>Los pedidos se actualizan automáticamente cada 8 segundos. Al entregar o cancelar, se guardan en historial.</p>
+      </div>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <div class="title">
+          <h2 id="viewTitle">Pedidos activos</h2>
+          <p id="viewSub">Controla cocina, entregas y pedidos confirmados.</p>
+        </div>
+
+        <div class="actions">
+          <div class="search">
+            🔎
+            <input id="searchInput" placeholder="Buscar cliente, teléfono o producto" oninput="render()" />
+          </div>
+          <button class="btn btn-dark" onclick="loadAll()">Actualizar</button>
+        </div>
+      </div>
+
+      <section class="stats">
+        <div class="stat">
+          <div class="icon">📋</div>
+          <strong id="sActivos">0</strong>
+          <span>Activos</span>
+        </div>
+        <div class="stat">
+          <div class="icon">🍳</div>
+          <strong id="sCocina">0</strong>
+          <span>Cocina</span>
+        </div>
+        <div class="stat">
+          <div class="icon">🚚</div>
+          <strong id="sCamino">0</strong>
+          <span>En camino</span>
+        </div>
+        <div class="stat">
+          <div class="icon">💰</div>
+          <strong id="sVentas">$0</strong>
+          <span>Ventas hoy</span>
+        </div>
+        <div class="stat">
+          <div class="icon">📦</div>
+          <strong id="sHistorial">0</strong>
+          <span>Historial</span>
+        </div>
+      </section>
+
+      <section class="content-grid">
+        <div class="section">
+          <div class="section-head">
+            <div>
+              <h3 id="sectionTitle">Órdenes en proceso</h3>
+              <p id="sectionSub">Los pedidos nuevos aparecerán aquí.</p>
+            </div>
+          </div>
+
+          <div class="cards" id="ordersList"></div>
+        </div>
+
+        <div class="right-panel">
+          <div class="section">
+            <div class="section-head">
+              <div>
+                <h3>Resumen rápido</h3>
+                <p>Estado actual del negocio</p>
+              </div>
+            </div>
+
+            <div class="mini-list">
+              <div class="mini-row"><span>Confirmados</span><strong id="rConfirmados">0</strong></div>
+              <div class="mini-row"><span>En cocina</span><strong id="rCocina">0</strong></div>
+              <div class="mini-row"><span>En camino</span><strong id="rCamino">0</strong></div>
+              <div class="mini-row"><span>Ventas hoy</span><strong id="rVentas">$0</strong></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-head">
+              <div>
+                <h3>Consejo</h3>
+                <p>Flujo recomendado</p>
+              </div>
+            </div>
+            <div class="mini-list">
+              <div class="mini-row"><span>1</span><strong>Confirmado → Cocina</strong></div>
+              <div class="mini-row"><span>2</span><strong>Cocina → En camino</strong></div>
+              <div class="mini-row"><span>3</span><strong>En camino → Entregado</strong></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal" id="cancelModal">
+    <div class="modal-card">
+      <h3>Cancelar pedido</h3>
+      <p>El pedido pasará al historial como cancelado y el cliente recibirá aviso.</p>
+      <input id="cancelReason" placeholder="Motivo opcional" />
+      <div class="modal-actions">
+        <button class="btn btn-red" onclick="confirmCancel()">Cancelar pedido</button>
+        <button class="btn btn-light" onclick="closeCancel()">Volver</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let activeView = "activos";
+    let pedidos = [];
+    let historial = [];
+    let dashboard = {};
+    let cancelNumber = "";
+
+    const API_KEY = localStorage.getItem("panel_api_key") || "";
+
+    function headers() {
+      const h = { "Content-Type": "application/json" };
+      if (API_KEY) h["x-api-key"] = API_KEY;
+      return h;
+    }
+
+    async function api(url, options = {}) {
+      const res = await fetch(url, {
+        ...options,
+        headers: { ...headers(), ...(options.headers || {}) }
+      });
+
+      if (res.status === 401) {
+        const key = prompt("Ingresa PANEL_API_KEY del panel:");
+        if (key) {
+          localStorage.setItem("panel_api_key", key);
+          location.reload();
+        }
+        throw new Error("No autorizado");
+      }
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Error de servidor");
+      }
+
+      return res.json();
+    }
+
+    function money(value) {
+      return `$${Number(value || 0).toLocaleString("es-MX")}`;
+    }
+
+    function dateFormat(value) {
+      if (!value) return "Sin fecha";
+      return new Date(value).toLocaleString("es-MX", {
+        dateStyle: "medium",
+        timeStyle: "short"
+      });
+    }
+
+    function timeAgo(value) {
+      if (!value) return "Sin fecha";
+      const diff = Math.floor((Date.now() - new Date(value).getTime()) / 60000);
+      if (diff < 1) return "ahora";
+      if (diff < 60) return `hace ${diff} min`;
+      if (diff < 1440) return `hace ${Math.floor(diff / 60)} h`;
+      return dateFormat(value);
+    }
+
+    function safe(text) {
+      return String(text ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function toast(msg, type = "ok") {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.className = `toast show ${type === "error" ? "error" : ""}`;
+      setTimeout(() => el.classList.remove("show"), 3200);
+    }
+
+    function showView(view) {
+      activeView = view;
+      document.getElementById("navActivos").classList.toggle("active", view === "activos");
+      document.getElementById("navHistorial").classList.toggle("active", view === "historial");
+
+      document.getElementById("viewTitle").textContent = view === "activos" ? "Pedidos activos" : "Historial de pedidos";
+      document.getElementById("viewSub").textContent = view === "activos"
+        ? "Controla cocina, entregas y pedidos confirmados."
+        : "Consulta pedidos entregados y cancelados.";
+
+      document.getElementById("sectionTitle").textContent = view === "activos" ? "Órdenes en proceso" : "Pedidos guardados";
+      document.getElementById("sectionSub").textContent = view === "activos"
+        ? "Los pedidos nuevos aparecerán aquí."
+        : "Aquí se quedan guardados los pedidos finalizados.";
+
+      render();
+    }
+
+    function matchesSearch(order) {
+      const q = document.getElementById("searchInput").value.trim().toLowerCase();
+      if (!q) return true;
+
+      const items = (order.pedidos || []).map(i => i.nombre).join(" ");
+      const base = `${order.nombre || ""} ${order.numero || ""} ${items}`.toLowerCase();
+
+      return base.includes(q);
+    }
+
+    function itemsHtml(items = []) {
+      if (!items.length) return `<div class="item"><span>Sin productos</span><span></span><span>$0</span></div>`;
+
+      return items.map(item => `
+        <div class="item">
+          <span>${safe(item.nombre)}</span>
+          <span class="qty">${item.cantidad || 1}x</span>
+          <strong>${money((item.precio || 0) * (item.cantidad || 1))}</strong>
+        </div>
+      `).join("");
+    }
+
+    function activeCard(order) {
+      const estado = order.estadoPedido || "confirmado";
+      let buttons = "";
+
+      if (estado === "confirmado" || estado === "armando") {
+        buttons += `<button class="btn btn-orange" onclick="changeState('${order.numero}', 'a-cocina')">🍳 A cocina</button>`;
+      }
+
+      if (estado === "cocina") {
+        buttons += `<button class="btn btn-green" onclick="changeState('${order.numero}', 'en-camino')">🚚 En camino</button>`;
+      }
+
+      if (estado === "cocina" || estado === "en_camino") {
+        buttons += `<button class="btn btn-dark" onclick="changeState('${order.numero}', 'entregado')">✅ Entregado</button>`;
+      }
+
+      buttons += `<button class="btn btn-red" onclick="openCancel('${order.numero}')">Cancelar</button>`;
+
+      const maps = order.direccion?.latitude && order.direccion?.longitude
+        ? ` · <a target="_blank" href="https://www.google.com/maps?q=${order.direccion.latitude},${order.direccion.longitude}">Ubicación</a>`
+        : "";
+
+      return `
+        <article class="order-card">
+          <div class="order-top">
+            <div class="customer">
+              <h4>${safe(order.nombre || "Cliente")}</h4>
+              <p>${safe(order.numero || "")}</p>
+            </div>
+            <span class="badge b-${estado}">${safe(estado.replace("_", " "))}</span>
+          </div>
+
+          <div class="items">${itemsHtml(order.pedidos)}</div>
+
+          <div class="total">
+            <span>Total</span>
+            <strong>${money(order.total)}</strong>
+          </div>
+
+          <div class="meta">
+            <span>⏱ ${timeAgo(order.ultimaActividad || order.horaConfirmacion)}</span>
+            <span>${maps}</span>
+          </div>
+
+          <div class="order-actions">${buttons}</div>
+        </article>
+      `;
+    }
+
+    function historyCard(order) {
+      const estado = order.estadoFinal || "entregado";
+      const maps = order.direccion?.latitude && order.direccion?.longitude
+        ? ` · <a target="_blank" href="https://www.google.com/maps?q=${order.direccion.latitude},${order.direccion.longitude}">Ubicación</a>`
+        : "";
+
+      return `
+        <article class="order-card">
+          <div class="order-top">
+            <div class="customer">
+              <h4>${safe(order.nombre || "Cliente")}</h4>
+              <p>${safe(order.numero || "")}</p>
+            </div>
+            <span class="badge b-${estado}">${safe(estado)}</span>
+          </div>
+
+          <div class="items">${itemsHtml(order.pedidos)}</div>
+
+          <div class="total">
+            <span>Total</span>
+            <strong>${money(order.total)}</strong>
+          </div>
+
+          <div class="meta">
+            <span>📅 ${dateFormat(order.fecha)}</span>
+            <span>${maps}</span>
+          </div>
+
+          ${order.motivoCancelacion ? `<div class="meta"><span>Motivo: ${safe(order.motivoCancelacion)}</span></div>` : ""}
+        </article>
+      `;
+    }
+
+    function emptyHtml(title, sub, emoji) {
+      return `
+        <div class="empty">
+          <div>
+            <div class="emoji">${emoji}</div>
+            <h4>${title}</h4>
+            <p>${sub}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function render() {
+      const list = document.getElementById("ordersList");
+
+      const data = activeView === "activos"
+        ? pedidos.filter(matchesSearch)
+        : historial.filter(matchesSearch);
+
+      if (!data.length) {
+        list.innerHTML = activeView === "activos"
+          ? emptyHtml("Sin pedidos activos", "Cuando llegue un pedido aparecerá aquí.", "🛵")
+          : emptyHtml("Sin historial", "Los pedidos entregados o cancelados se guardarán aquí.", "📦");
+        return;
+      }
+
+      list.innerHTML = data.map(order =>
+        activeView === "activos" ? activeCard(order) : historyCard(order)
+      ).join("");
+    }
+
+    function renderStats() {
+      const activos = dashboard.activos || pedidos.length;
+      const cocina = dashboard.cocina || pedidos.filter(p => p.estadoPedido === "cocina").length;
+      const camino = dashboard.camino || pedidos.filter(p => p.estadoPedido === "en_camino").length;
+      const confirmados = dashboard.confirmados || pedidos.filter(p => p.estadoPedido === "confirmado").length;
+      const ventasHoy = dashboard.ventasHoy || 0;
+      const hCount = dashboard.historial || historial.length;
+
+      document.getElementById("sActivos").textContent = activos;
+      document.getElementById("sCocina").textContent = cocina;
+      document.getElementById("sCamino").textContent = camino;
+      document.getElementById("sVentas").textContent = money(ventasHoy);
+      document.getElementById("sHistorial").textContent = hCount;
+
+      document.getElementById("rConfirmados").textContent = confirmados;
+      document.getElementById("rCocina").textContent = cocina;
+      document.getElementById("rCamino").textContent = camino;
+      document.getElementById("rVentas").textContent = money(ventasHoy);
+
+      document.getElementById("pillActivos").textContent = activos;
+      document.getElementById("pillHistorial").textContent = hCount;
+    }
+
+    async function loadAll() {
+      try {
+        const [p, h, d] = await Promise.all([
+          api("/api/pedidos"),
+          api("/api/historial"),
+          api("/api/dashboard")
+        ]);
+
+        pedidos = p;
+        historial = h;
+        dashboard = d;
+
+        renderStats();
+        render();
+      } catch (err) {
+        console.error(err);
+        toast("Error al cargar datos", "error");
+      }
+    }
+
+    async function changeState(numero, action) {
+      try {
+        await api(`/api/pedido/${action}`, {
+          method: "POST",
+          body: JSON.stringify({ numero })
+        });
+
+        toast("Pedido actualizado");
+        await loadAll();
+      } catch (err) {
+        console.error(err);
+        toast("No se pudo actualizar", "error");
+      }
+    }
+
+    function openCancel(numero) {
+      cancelNumber = numero;
+      document.getElementById("cancelReason").value = "";
+      document.getElementById("cancelModal").classList.add("show");
+    }
+
+    function closeCancel() {
+      cancelNumber = "";
+      document.getElementById("cancelModal").classList.remove("show");
+    }
+
+    async function confirmCancel() {
+      const motivo = document.getElementById("cancelReason").value;
+
+      try {
+        await api("/api/pedido/cancelar", {
+          method: "POST",
+          body: JSON.stringify({ numero: cancelNumber, motivo })
+        });
+
+        closeCancel();
+        toast("Pedido cancelado y guardado");
+        await loadAll();
+      } catch (err) {
+        console.error(err);
+        toast("No se pudo cancelar", "error");
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadAll();
+      setInterval(loadAll, 8000);
+    });
+  </script>
+</body>
+</html>

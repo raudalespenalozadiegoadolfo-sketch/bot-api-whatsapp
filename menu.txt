@@ -1,0 +1,77 @@
+COMIDA
+
+CAMARONES
+- A la Diabla .......... $180
+- Empanizados .......... $190
+- Al Ajo ............... $180
+- Al Ajillo ............ $180
+
+PULPO
+- A la Diabla .......... $220
+- Empanizado ........... $220
+- Zarandeado ........... $220
+
+FILETE
+- A la Diabla .......... $160
+- Empanizado ........... $170
+- Al Ajo ............... $170
+
+COCTEL
+- Camarón .............. $190
+- Pulpo ................ $200
+- Callo ................ $250
+- Mixto ................ $220
+
+CEVICHE
+- Pescado .............. $180
+- Camarón .............. $200
+
+AGUACHILE
+- Verde ................ $190
+- Rojo ................. $190
+- Negro ................ $190
+
+
+CORTES FINOS
+- Arrachera ............ $220
+- T-Bone ............... $250
+- Rib Eye .............. $270
+
+BEBIDAS
+
+MICHELADAS 1 LT
+- Camarón .............. $100
+- Clamato .............. $80
+- Tamarindo ............ $90
+
+CERVEZA 355 ML
+- Corona Extra ......... $40
+- Corona Light ......... $40
+- Corona Cero .......... $40
+- Tecate ............... $35
+- Tecate Light ......... $35
+- Indio ................ $30
+- Ultra ................ $30
+- Heineken Cero ........ $35
+
+REFRESCOS 600 ML
+- Coca Cola ............ $30
+- Coca Cola Light ...... $30
+- Pepsi ................ $25
+- Sangría .............. $25
+- 7UP .................. $25
+
+AGUA 1 LT
+- Arroz ................ $35
+- Jamaica .............. $35
+- Piña ................. $35
+- Limón ................ $35
+
+AGUA .5 LT
+- Arroz ................ $20
+- Jamaica .............. $20
+- Piña ................. $20
+- Limón ................ $20
+
+
+
