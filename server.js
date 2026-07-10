@@ -6,6 +6,13 @@ const mongoose = require("mongoose");
 const path = require("path");
 const crypto = require("crypto");
 
+const webhookRoutes = require("./routes/webhookRoutes");
+const Cliente = require("./models/Cliente");
+const ProcessedMessage = require("./models/ProcessedMessage");
+const {
+  detectProducts,
+} = require("./services/productMatcherService");
+
 const app = express();
 
 app.use(express.json({
@@ -16,6 +23,8 @@ app.use(express.json({
 }));
 
 app.use(express.static(path.join(__dirname, "public")));
+
+app.use(webhookRoutes);
 
 const {
   TOKEN,
@@ -96,65 +105,19 @@ const products = [
    MODELOS
 ========================= */
 
-const itemSchema = new mongoose.Schema({
-  productId: String,
-  nombre: String,
-  precio: Number,
-  cantidad: { type: Number, default: 1 },
-}, { _id: false });
-
-const historialSchema = new mongoose.Schema({
-  fecha: { type: Date, default: Date.now },
-  estadoFinal: { type: String, enum: ["entregado", "cancelado"], default: "entregado" },
-  pedidos: { type: [itemSchema], default: [] },
-  total: { type: Number, default: 0 },
-  nombre: String,
-  numero: String,
-  direccion: Object,
-  motivoCancelacion: String,
-}, { _id: true });
-
-const clienteSchema = new mongoose.Schema({
-  numero: { type: String, unique: true, index: true },
-  nombre: { type: String, default: "" },
-  direccion: { type: Object, default: null },
-  pedidos: { type: [itemSchema], default: [] },
-  historialPedidos: { type: [historialSchema], default: [] },
-  productoPendiente: { type: Object, default: null },
-  pedidoOrigen: { type: String, default: "whatsapp" },
-  paso: {
-    type: String,
-    enum: ["inicio", "esperando_nombre", "esperando_ubicacion", "confirmando_direccion", "esperando_cantidad"],
-    default: "inicio"
-  },
-  estadoPedido: {
-    type: String,
-    enum: ["sin_pedido", "armando", "confirmado", "cocina", "en_camino"],
-    default: "sin_pedido"
-  },
-  horaConfirmacion: Date,
-  ultimaActividad: Date,
-}, { timestamps: true });
-
-const processedMessageSchema = new mongoose.Schema({
-  messageId: { type: String, unique: true },
-  createdAt: { type: Date, default: Date.now, expires: "7d" },
-});
-
-const Cliente = mongoose.model("Cliente", clienteSchema);
-const ProcessedMessage = mongoose.model("ProcessedMessage", processedMessageSchema);
+const {
+  normalize,
+  cleanPhone,
+  isThanks,
+  wordsToNumbers,
+  publicBaseUrl,
+} = require("./services/utilsService");
 
 /* =========================
    UTILIDADES
 ========================= */
 
-const normalize = (value = "") => value
-  .toLowerCase()
-  .normalize("NFD")
-  .replace(/[\u0300-\u036f]/g, "")
-  .replace(/[^a-z0-9\s-]/g, " ")
-  .replace(/\s+/g, " ")
-  .trim();
+
 
 const totalOf = (cliente) =>
   cliente.pedidos.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
@@ -178,33 +141,14 @@ function makeOrderId() {
   return crypto.randomBytes(4).toString("hex").toUpperCase();
 }
 
-function publicBaseUrl(req) {
-  const proto = req.get("x-forwarded-proto") || req.protocol || "http";
-  return `${proto}://${req.get("host")}`;
-}
 
 function storeUrl() {
   return STORE_URL || "http://localhost:10000/tienda";
 }
 
-function cleanPhone(value = "") {
-  let n = String(value).replace(/\D/g, "");
 
-  // México: si escriben solo 10 dígitos, agrega 521 para WhatsApp Cloud API.
-  if (n.length === 10) n = `521${n}`;
 
-  // Si escriben 52 + 10 dígitos, lo convertimos a 521 + 10 dígitos.
-  if (n.length === 12 && n.startsWith("52") && !n.startsWith("521")) {
-    n = `521${n.slice(2)}`;
-  }
 
-  return n;
-}
-
-function isThanks(text = "") {
-  const t = normalize(text);
-  return t === "gracias" || t === "muchas gracias" || t.includes("gracias");
-}
 
 function addProduct(cliente, product, quantity = 1) {
   const existing = cliente.pedidos.find(item => item.productId === product.id);
@@ -366,62 +310,6 @@ function extractInput(message) {
    DETECCIÓN DE PEDIDOS
 ========================= */
 
-function wordsToNumbers(text) {
-  return normalize(text)
-    .replace(/\buna\b/g, "1")
-    .replace(/\bun\b/g, "1")
-    .replace(/\bdos\b/g, "2")
-    .replace(/\btres\b/g, "3")
-    .replace(/\bcuatro\b/g, "4")
-    .replace(/\bcinco\b/g, "5")
-    .replace(/\bseis\b/g, "6")
-    .replace(/\bsiete\b/g, "7")
-    .replace(/\bocho\b/g, "8")
-    .replace(/\bnueve\b/g, "9")
-    .replace(/\bdiez\b/g, "10");
-}
-
-function getQuantityBefore(text, index) {
-  const before = text.slice(Math.max(0, index - 35), index);
-  const match = before.match(/(\d+)\s*(?:x|de|orden(?:es)?|pieza(?:s)?|vaso(?:s)?|litro(?:s)?)?\s*$/);
-  return Number(match?.[1] || 1);
-}
-
-function detectProducts(text) {
-  const normalized = wordsToNumbers(text)
-    .replace(/\bcocas?\b/g, "coca cola")
-    .replace(/\bmichelitas?\b/g, "michelada")
-    .replace(/\bcebiche\b/g, "ceviche");
-
-  const detections = [];
-
-  for (const product of products) {
-    const keys = [product.name, ...(product.aliases || [])].map(normalize);
-
-    for (const key of keys) {
-      const index = normalized.indexOf(key);
-      if (index !== -1) {
-        detections.push({
-          product,
-          quantity: Math.min(Math.max(getQuantityBefore(normalized, index), 1), 20),
-          index,
-          keyLength: key.length
-        });
-        break;
-      }
-    }
-  }
-
-  const unique = new Map();
-
-  detections
-    .sort((a, b) => a.index - b.index || b.keyLength - a.keyLength)
-    .forEach(item => {
-      if (!unique.has(item.product.id)) unique.set(item.product.id, item);
-    });
-
-  return [...unique.values()];
-}
 
 /* =========================
    FLUJO DEL BOT
@@ -932,39 +820,6 @@ app.post("/api/pedido/:action", changeOrderState);
    WEBHOOK META
 ========================= */
 
-app.get("/webhook", (req, res) => {
-  const valid =
-    req.query["hub.mode"] === "subscribe" &&
-    req.query["hub.verify_token"] === VERIFY_TOKEN;
-
-  return valid
-    ? res.status(200).send(req.query["hub.challenge"])
-    : res.sendStatus(403);
-});
-
-app.post("/webhook", (req, res) => {
-  const receivedSignature = req.get("x-hub-signature-256") || "";
-
-  const expectedSignature = `sha256=${crypto
-    .createHmac("sha256", APP_SECRET)
-    .update(req.rawBody || Buffer.from(""))
-    .digest("hex")}`;
-
-  const signatureIsValid =
-    receivedSignature.length === expectedSignature.length &&
-    crypto.timingSafeEqual(Buffer.from(receivedSignature), Buffer.from(expectedSignature));
-
-  if (!signatureIsValid) return res.sendStatus(401);
-
-  const messages = req.body.entry?.flatMap(entry => entry.changes || [])
-    .flatMap(change => change.value?.messages || []) || [];
-
-  res.sendStatus(200);
-
-  Promise.all(messages.map(handleIncoming)).catch(error =>
-    console.error("Error procesando webhook:", error.response?.data || error)
-  );
-});
 
 /* =========================
    ERRORES + START
@@ -977,11 +832,13 @@ app.use((error, _req, res, _next) => {
 
 mongoose.connect(MONGO_URI)
   .then(() => {
+    console.log("✅ MongoDB conectado correctamente");
+
     app.listen(PORT, () => {
-      console.log(`Marisco Alegre PRO 6.3 listo en el puerto ${PORT}`);
+      console.log(`✅ Marisco Alegre PRO listo en el puerto ${PORT}`);
     });
   })
   .catch(error => {
-    console.error("No fue posible conectar con MongoDB:", error.message);
+    console.error("❌ No fue posible conectar con MongoDB:", error.message);
     process.exitCode = 1;
   });
