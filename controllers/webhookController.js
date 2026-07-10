@@ -1,49 +1,108 @@
 const crypto = require("crypto");
 const env = require("../config/env");
+const { getMessagesFromWebhook } = require("../services/messageService");
+const { handleIncoming } = require("./botFlowController");
 
 function verifyWebhook(req, res) {
-  const valid =
-    req.query["hub.mode"] === "subscribe" &&
-    req.query["hub.verify_token"] === env.VERIFY_TOKEN;
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
 
-  return valid
-    ? res.status(200).send(req.query["hub.challenge"])
-    : res.sendStatus(403);
+  if (
+    mode === "subscribe" &&
+    token === env.VERIFY_TOKEN
+  ) {
+    console.log("✅ Webhook verificado por Meta");
+    return res.status(200).send(challenge);
+  }
+
+  console.warn("❌ Intento de verificación rechazado");
+  return res.sendStatus(403);
 }
 
 function validateSignature(req) {
-  const receivedSignature = req.get("x-hub-signature-256") || "";
+  const receivedSignature =
+    req.get("x-hub-signature-256") || "";
 
   const expectedSignature = `sha256=${crypto
     .createHmac("sha256", env.APP_SECRET)
     .update(req.rawBody || Buffer.from(""))
     .digest("hex")}`;
 
-  return (
-    receivedSignature.length === expectedSignature.length &&
-    crypto.timingSafeEqual(
+  if (
+    receivedSignature.length !==
+    expectedSignature.length
+  ) {
+    return false;
+  }
+
+  try {
+    return crypto.timingSafeEqual(
       Buffer.from(receivedSignature),
       Buffer.from(expectedSignature)
-    )
-  );
+    );
+  } catch (error) {
+    console.error(
+      "❌ Error comparando la firma:",
+      error.message
+    );
+
+    return false;
+  }
 }
 
-async function receiveWebhook(req, res) {
-  const signatureIsValid = validateSignature(req);
+async function processMessages(messages) {
+  for (const message of messages) {
+    try {
+      console.log("📩 Procesando mensaje:", {
+        id: message.id,
+        from: message.from,
+        type: message.type,
+        text: message.text?.body || "",
+        button:
+          message.interactive?.button_reply?.id || "",
+        list:
+          message.interactive?.list_reply?.id || "",
+      });
 
-  if (!signatureIsValid) {
+      await handleIncoming(message);
+
+      console.log(
+        "✅ Mensaje procesado correctamente:",
+        message.id
+      );
+    } catch (error) {
+      console.error(
+        "❌ ERROR COMPLETO EN HANDLE INCOMING:"
+      );
+
+      console.error(
+        error.response?.data ||
+          error.stack ||
+          error.message ||
+          error
+      );
+    }
+  }
+}
+
+function receiveWebhook(req, res) {
+  if (!validateSignature(req)) {
+    console.warn("❌ Firma del webhook inválida");
     return res.sendStatus(401);
   }
 
-  const messages =
-    req.body.entry?.flatMap(entry => entry.changes || [])
-      .flatMap(change => change.value?.messages || []) || [];
+  const messages = getMessagesFromWebhook(req.body);
 
+  console.log(
+    `📨 Mensajes recibidos por nuevo controlador: ${messages.length}`
+  );
+
+  // Meta necesita recibir rápidamente el código 200.
   res.sendStatus(200);
 
-  console.log("Mensajes recibidos por nuevo controlador:", messages.length);
-
-  // En el siguiente paso conectaremos handleIncoming aquí.
+  // Procesamos después de responder a Meta.
+  void processMessages(messages);
 }
 
 module.exports = {
