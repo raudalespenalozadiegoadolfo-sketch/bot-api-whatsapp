@@ -15,7 +15,11 @@ function cleanPhone(value = "") {
     n = `521${n}`;
   }
 
-  if (n.length === 12 && n.startsWith("52") && !n.startsWith("521")) {
+  if (
+    n.length === 12 &&
+    n.startsWith("52") &&
+    !n.startsWith("521")
+  ) {
     n = `521${n.slice(2)}`;
   }
 
@@ -24,10 +28,15 @@ function cleanPhone(value = "") {
 
 function isThanks(text = "") {
   const t = normalize(text);
-  return t === "gracias" || t === "muchas gracias" || t.includes("gracias");
+
+  return (
+    t === "gracias" ||
+    t === "muchas gracias" ||
+    t.includes("gracias")
+  );
 }
 
-function wordsToNumbers(text) {
+function wordsToNumbers(text = "") {
   return normalize(text)
     .replace(/\buna\b/g, "1")
     .replace(/\bun\b/g, "1")
@@ -43,7 +52,11 @@ function wordsToNumbers(text) {
 }
 
 function publicBaseUrl(req) {
-  const proto = req.get("x-forwarded-proto") || req.protocol || "http";
+  const proto =
+    req.get("x-forwarded-proto") ||
+    req.protocol ||
+    "http";
+
   return `${proto}://${req.get("host")}`;
 }
 
