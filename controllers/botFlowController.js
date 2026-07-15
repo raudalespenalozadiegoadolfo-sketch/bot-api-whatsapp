@@ -29,6 +29,14 @@ const {
   findProductById,
 } = require("../services/menuService");
 
+const {
+  interpretCommand,
+} = require("../services/commandInterpreterService");
+
+const {
+  executeCartCommand,
+} = require("../services/intelligentCartService");
+
 const env = require("../config/env");
 
 /* =========================
@@ -167,6 +175,76 @@ async function handleIncoming(message) {
       "😊 Gracias por tu preferencia. Esperamos atenderte nuevamente."
     );
   }
+
+  if (
+  input.kind === "text" &&
+  cliente.pedidos?.length
+) {
+  const cartCommand = processCartCommand(
+    cliente,
+    command
+  );
+
+  if (cartCommand.handled) {
+    if (cartCommand.ok) {
+      await cliente.save();
+
+      if (!cliente.pedidos.length) {
+        return sendText(
+          numero,
+          `${cartCommand.message}\n\nTu carrito quedó vacío.`
+        );
+      }
+
+      return sendButtons(
+        numero,
+        `${cartCommand.message}\n\n${ticket(cliente)}`,
+        [
+          {
+            id: "show_menu",
+            title: "➕ Agregar más",
+          },
+          {
+            id: "show_cart",
+            title: "🛒 Ver carrito",
+          },
+          {
+            id: "confirm_order",
+            title: "✅ Confirmar",
+          },
+        ]
+      );
+    }
+
+    return sendText(
+      numero,
+      cartCommand.message
+    );
+  }
+}
+
+if (
+  input.kind === "text" &&
+  cliente.pedidos?.length
+) {
+  const commandResult = interpretCommand(command);
+
+  if (commandResult.handled) {
+    const findCartItem = product =>
+      cliente.pedidos.find(
+        item =>
+          item.productId === product.id ||
+          normalize(item.nombre) === normalize(product.name)
+      );
+
+    if (commandResult.action === "empty_cart") {
+      emptyOrder(cliente);
+      await cliente.save();
+
+      return sendText(
+        numero,
+        "🗑️ Tu carrito quedó vacío."
+      );
 
   /* =========================
      UBICACIÓN
