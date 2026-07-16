@@ -19,6 +19,7 @@ const {
 
 const {
   sendText,
+  sendImage,
   sendButtons,
   sendList,
 } = require("../services/whatsappService");
@@ -47,6 +48,16 @@ function storeUrl() {
   return env.STORE_URL || "http://localhost:10000/tienda";
 }
 
+function menuImageUrl() {
+  const baseUrl =
+    env.PUBLIC_URL ||
+    (env.STORE_URL
+      ? env.STORE_URL.replace(/\/tienda\/?$/, "")
+      : "https://bot-api-whatsapp.onrender.com");
+
+  return `${baseUrl.replace(/\/$/, "")}/menu.jpg`;
+}
+
 /* =========================
    MENÚ PRINCIPAL
 ========================= */
@@ -55,6 +66,19 @@ async function welcome(numero, cliente) {
   const saludo = cliente.nombre
     ? `¡Hola, ${cliente.nombre}!`
     : "¡Hola!";
+
+  try {
+    await sendImage(
+      numero,
+      menuImageUrl(),
+      `🦐 Menú de ${env.RESTAURANT_NAME || "Marisco Alegre"}`
+    );
+  } catch (error) {
+    console.warn(
+      "⚠️ No se pudo enviar la imagen del menú:",
+      error.response?.data || error.message
+    );
+  }
 
   await sendList(
     numero,
@@ -177,47 +201,40 @@ async function handleIncoming(message) {
   }
 
   if (input.kind === "text") {
-
     const commandResult = interpretCommand(command);
-
-    const cartResult = executeCartCommand(
-        cliente,
-        commandResult
-    );
+    const cartResult = executeCartCommand(cliente, commandResult);
 
     if (cartResult.handled) {
+      if (!cartResult.ok) {
+        return sendText(numero, cartResult.message);
+      }
 
-        if (!cartResult.ok) {
-            return sendText(numero, cartResult.message);
-        }
+      await cliente.save();
 
-        await cliente.save();
+      if (!cliente.pedidos.length) {
+        return sendText(numero, cartResult.message);
+      }
 
-        if (!cliente.pedidos.length) {
-            return sendText(numero, cartResult.message);
-        }
-
-        return sendButtons(
-            numero,
-            `${cartResult.message}\n\n${cartResult.ticket}`,
-            [
-                {
-                    id: "show_menu",
-                    title: "➕ Agregar más",
-                },
-                {
-                    id: "show_cart",
-                    title: "🛒 Ver carrito",
-                },
-                {
-                    id: "confirm_order",
-                    title: "✅ Confirmar",
-                },
-            ]
-        );
+      return sendButtons(
+        numero,
+        `${cartResult.message}\n\n${cartResult.ticket}`,        [
+          {
+            id: "show_menu",
+            title: "➕ Agregar más",
+          },
+          {
+            id: "show_cart",
+            title: "🛒 Ver carrito",
+          },
+          {
+            id: "confirm_order",
+            title: "✅ Confirmar",
+          },
+        ]
+      );
     }
   }
-  
+
   /* =========================
      UBICACIÓN
   ========================= */
@@ -285,6 +302,7 @@ async function handleIncoming(message) {
     cliente.paso === "esperando_cantidad" &&
     (input.kind === "text" || input.kind === "button")
   ) {
+
     const cantidad = command.startsWith("quantity_")
       ? parseInt(command.replace("quantity_", ""), 10)
       : parseInt(text, 10);
@@ -296,13 +314,14 @@ async function handleIncoming(message) {
     ) {
       return sendText(
         numero,
-        "Por favor escribe una cantidad válida entre 1 y 20. Ejemplo: 1, 2 o 3."
+        "Por favor escribe una cantidad válida entre 1 y 20."
       );
     }
 
     const product = cliente.productoPendiente;
 
     if (!product) {
+
       cliente.paso = "inicio";
       cliente.productoPendiente = null;
 
@@ -310,7 +329,7 @@ async function handleIncoming(message) {
 
       return sendText(
         numero,
-        "No encontré el producto pendiente. Vuelve a seleccionar un producto del menú."
+        "No encontré el producto pendiente."
       );
     }
 
@@ -350,6 +369,7 @@ async function handleIncoming(message) {
   }
 
   if (command === "address_no") {
+
     cliente.paso = "esperando_ubicacion";
 
     await cliente.save();
@@ -361,7 +381,7 @@ async function handleIncoming(message) {
   }
 
   /* =========================
-     MOSTRAR MENÚ
+     MENÚ
   ========================= */
 
   if (
@@ -372,7 +392,7 @@ async function handleIncoming(message) {
   }
 
   /* =========================
-     TIENDA EN LÍNEA
+     TIENDA
   ========================= */
 
   if (
@@ -383,7 +403,7 @@ async function handleIncoming(message) {
   ) {
     return sendText(
       numero,
-      `🌐 Tienda online:\n${storeUrl()}\n\nCuando confirmes el carrito, el pedido llegará a este chat para terminar el proceso.`
+      `🌐 Tienda online:\n${storeUrl()}\n\nCuando confirmes el carrito, el pedido llegará a este chat.`
     );
   }
 
@@ -400,6 +420,7 @@ async function handleIncoming(message) {
   }
 
   if (command.startsWith("category_")) {
+
     const [, type, index] = command.split("_");
 
     return showProducts(
@@ -407,9 +428,7 @@ async function handleIncoming(message) {
       type,
       Number(index)
     );
-  }
-
-  /* =========================
+  }  /* =========================
      SELECCIÓN DE PRODUCTO
   ========================= */
 
@@ -477,8 +496,89 @@ async function handleIncoming(message) {
           title: "✅ Confirmar",
         },
         {
+          id: "edit_cart",
+          title: "✏️ Editar carrito",
+        },
+        {
           id: "empty_cart",
           title: "🗑️ Vaciar",
+        },
+      ]
+    );
+  }
+
+  /* =========================
+     EDITAR CARRITO
+  ========================= */
+
+  if (command === "edit_cart") {
+    if (!cliente.pedidos.length) {
+      return sendText(
+        numero,
+        "Tu carrito está vacío."
+      );
+    }
+
+    cliente.paso = "editando_carrito";
+    cliente.ultimaActividad = new Date();
+
+    await cliente.save();
+
+    const editableOrder = cliente.pedidos
+      .map(item => `${item.cantidad} ${item.nombre}`)
+      .join("\n");
+
+    return sendText(
+      numero,
+      `✏️ Copia este pedido, modifícalo y envíalo nuevamente:\n\n${editableOrder}\n\nEjemplo:\n2 Aguachile verde\n1 Coca Cola`
+    );
+  }
+
+  if (
+    cliente.paso === "editando_carrito" &&
+    input.kind === "text"
+  ) {
+    const detected = detectProducts(command);
+
+    if (!detected.length) {
+      return sendText(
+        numero,
+        "No pude identificar productos en el pedido editado. Intenta escribir una línea por producto."
+      );
+    }
+
+    cliente.pedidos = [];
+    cliente.estadoPedido = "sin_pedido";
+    cliente.productoPendiente = null;
+
+    detected.forEach(({ product, quantity }) => {
+      addProduct(
+        cliente,
+        product,
+        quantity
+      );
+    });
+
+    cliente.paso = "inicio";
+    cliente.ultimaActividad = new Date();
+
+    await cliente.save();
+
+    return sendButtons(
+      numero,
+      `✅ Actualicé tu pedido:\n\n${ticket(cliente)}`,
+      [
+        {
+          id: "show_menu",
+          title: "➕ Agregar más",
+        },
+        {
+          id: "show_cart",
+          title: "🛒 Ver carrito",
+        },
+        {
+          id: "confirm_order",
+          title: "✅ Confirmar",
         },
       ]
     );
@@ -542,9 +642,7 @@ async function handleIncoming(message) {
       estados[cliente.estadoPedido] ||
         "No pude identificar el estado de tu pedido."
     );
-  }
-
-  /* =========================
+  }  /* =========================
      SALUDOS
   ========================= */
 
@@ -586,7 +684,11 @@ async function handleIncoming(message) {
       }
 
       detected.forEach(({ product, quantity }) => {
-        addProduct(cliente, product, quantity);
+        addProduct(
+          cliente,
+          product,
+          quantity
+        );
       });
 
       await cliente.save();
@@ -607,8 +709,8 @@ async function handleIncoming(message) {
             title: "➕ Agregar más",
           },
           {
-            id: "show_cart",
-            title: "🛒 Ver carrito",
+            id: "edit_cart",
+            title: "✏️ Editar carrito",
           },
           {
             id: "confirm_order",
