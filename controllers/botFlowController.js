@@ -30,14 +30,6 @@ const {
   findProductById,
 } = require("../services/menuService");
 
-const {
-  interpretCommand,
-} = require("../services/commandInterpreterService");
-
-const {
-  executeCartCommand,
-} = require("../services/intelligentCartService");
-
 const env = require("../config/env");
 
 /* =========================
@@ -118,16 +110,20 @@ async function welcome(numero, cliente) {
 }
 
 function showMenu(numero) {
-  return sendButtons(numero, "Elige una sección:", [
-    {
-      id: "type_food",
-      title: "🍴 Comida",
-    },
-    {
-      id: "type_drink",
-      title: "🥤 Bebidas",
-    },
-  ]);
+  return sendButtons(
+    numero,
+    "Elige una sección:",
+    [
+      {
+        id: "type_food",
+        title: "🍴 Comida",
+      },
+      {
+        id: "type_drink",
+        title: "🥤 Bebidas",
+      },
+    ]
+  );
 }
 
 function showCategories(numero, type) {
@@ -200,39 +196,73 @@ async function handleIncoming(message) {
     );
   }
 
-  if (input.kind === "text") {
-    const commandResult = interpretCommand(command);
-    const cartResult = executeCartCommand(cliente, commandResult);
+  /* =========================
+     RECIBIR CARRITO EDITADO
+  ========================= */
 
-    if (cartResult.handled) {
-      if (!cartResult.ok) {
-        return sendText(numero, cartResult.message);
-      }
+  if (
+    cliente.paso === "editando_carrito" &&
+    input.kind === "text"
+  ) {
+    const detected = detectProducts(command);
 
-      await cliente.save();
-
-      if (!cliente.pedidos.length) {
-        return sendText(numero, cartResult.message);
-      }
-
-      return sendButtons(
+    if (!detected.length) {
+      return sendText(
         numero,
-        `${cartResult.message}\n\n${cartResult.ticket}`,        [
-          {
-            id: "show_menu",
-            title: "➕ Agregar más",
-          },
-          {
-            id: "show_cart",
-            title: "🛒 Ver carrito",
-          },
-          {
-            id: "confirm_order",
-            title: "✅ Confirmar",
-          },
-        ]
+        `No pude identificar ningún producto.
+
+Escribe nuevamente TODO tu pedido, preferentemente una línea por producto.
+
+Ejemplo:
+
+2 Aguachile verde
+1 Coca Cola`
       );
     }
+
+    /*
+     * Solo reemplazamos el carrito después de confirmar
+     * que el mensaje nuevo contiene productos válidos.
+     */
+    cliente.pedidos = [];
+    cliente.estadoPedido = "sin_pedido";
+    cliente.productoPendiente = null;
+
+    detected.forEach(({ product, quantity }) => {
+      addProduct(
+        cliente,
+        product,
+        quantity
+      );
+    });
+
+    cliente.estadoPedido = cliente.pedidos.length
+      ? "armando"
+      : "sin_pedido";
+
+    cliente.paso = "inicio";
+    cliente.ultimaActividad = new Date();
+
+    await cliente.save();
+
+    return sendButtons(
+      numero,
+      `✅ Reemplacé tu carrito correctamente.\n\n${ticket(cliente)}`,
+      [
+        {
+          id: "show_menu",
+          title: "➕ Agregar más",
+        },
+        {
+          id: "edit_cart",
+          title: "✏️ Editar carrito",
+        },
+        {
+          id: "confirm_order",
+          title: "✅ Confirmar",
+        },
+      ]
+    );
   }
 
   /* =========================
@@ -302,7 +332,6 @@ async function handleIncoming(message) {
     cliente.paso === "esperando_cantidad" &&
     (input.kind === "text" || input.kind === "button")
   ) {
-
     const cantidad = command.startsWith("quantity_")
       ? parseInt(command.replace("quantity_", ""), 10)
       : parseInt(text, 10);
@@ -321,7 +350,6 @@ async function handleIncoming(message) {
     const product = cliente.productoPendiente;
 
     if (!product) {
-
       cliente.paso = "inicio";
       cliente.productoPendiente = null;
 
@@ -329,14 +357,19 @@ async function handleIncoming(message) {
 
       return sendText(
         numero,
-        "No encontré el producto pendiente."
+        "No encontré el producto pendiente. Vuelve a seleccionarlo del menú."
       );
     }
 
-    addProduct(cliente, product, cantidad);
+    addProduct(
+      cliente,
+      product,
+      cantidad
+    );
 
     cliente.productoPendiente = null;
     cliente.paso = "inicio";
+    cliente.ultimaActividad = new Date();
 
     await cliente.save();
 
@@ -349,8 +382,8 @@ async function handleIncoming(message) {
           title: "➕ Agregar más",
         },
         {
-          id: "show_cart",
-          title: "🛒 Ver carrito",
+          id: "edit_cart",
+          title: "✏️ Editar carrito",
         },
         {
           id: "confirm_order",
@@ -360,7 +393,7 @@ async function handleIncoming(message) {
     );
   }
 
-  /* =========================
+    /* =========================
      DIRECCIÓN GUARDADA
   ========================= */
 
@@ -369,8 +402,8 @@ async function handleIncoming(message) {
   }
 
   if (command === "address_no") {
-
     cliente.paso = "esperando_ubicacion";
+    cliente.ultimaActividad = new Date();
 
     await cliente.save();
 
@@ -381,7 +414,7 @@ async function handleIncoming(message) {
   }
 
   /* =========================
-     MENÚ
+     MOSTRAR MENÚ
   ========================= */
 
   if (
@@ -392,7 +425,7 @@ async function handleIncoming(message) {
   }
 
   /* =========================
-     TIENDA
+     TIENDA EN LÍNEA
   ========================= */
 
   if (
@@ -403,7 +436,7 @@ async function handleIncoming(message) {
   ) {
     return sendText(
       numero,
-      `🌐 Tienda online:\n${storeUrl()}\n\nCuando confirmes el carrito, el pedido llegará a este chat.`
+      `🌐 Tienda online:\n${storeUrl()}\n\nCuando confirmes el carrito, el pedido llegará a este chat para terminar el proceso.`
     );
   }
 
@@ -412,31 +445,41 @@ async function handleIncoming(message) {
   ========================= */
 
   if (command === "type_food") {
-    return showCategories(numero, "food");
+    return showCategories(
+      numero,
+      "food"
+    );
   }
 
   if (command === "type_drink") {
-    return showCategories(numero, "drink");
+    return showCategories(
+      numero,
+      "drink"
+    );
   }
 
   if (command.startsWith("category_")) {
-
-    const [, type, index] = command.split("_");
+    const [, type, index] =
+      command.split("_");
 
     return showProducts(
       numero,
       type,
       Number(index)
     );
-  }  /* =========================
+  }
+
+  /* =========================
      SELECCIÓN DE PRODUCTO
   ========================= */
 
   if (command.startsWith("product_")) {
     if (
-      ["confirmado", "cocina", "en_camino"].includes(
-        cliente.estadoPedido
-      )
+      [
+        "confirmado",
+        "cocina",
+        "en_camino",
+      ].includes(cliente.estadoPedido)
     ) {
       return sendText(
         numero,
@@ -444,8 +487,13 @@ async function handleIncoming(message) {
       );
     }
 
-    const productId = command.replace("product_", "");
-    const product = findProductById(productId);
+    const productId = command.replace(
+      "product_",
+      ""
+    );
+
+    const product =
+      findProductById(productId);
 
     if (!product) {
       return showMenu(numero);
@@ -460,8 +508,11 @@ async function handleIncoming(message) {
       aliases: product.aliases || [],
     };
 
-    cliente.paso = "esperando_cantidad";
-    cliente.ultimaActividad = new Date();
+    cliente.paso =
+      "esperando_cantidad";
+
+    cliente.ultimaActividad =
+      new Date();
 
     await cliente.save();
 
@@ -472,7 +523,7 @@ async function handleIncoming(message) {
   }
 
   /* =========================
-     CARRITO
+     MOSTRAR CARRITO
   ========================= */
 
   if (
@@ -508,7 +559,7 @@ async function handleIncoming(message) {
   }
 
   /* =========================
-     EDITAR CARRITO
+     ACTIVAR EDICIÓN DEL CARRITO
   ========================= */
 
   if (command === "edit_cart") {
@@ -519,72 +570,43 @@ async function handleIncoming(message) {
       );
     }
 
-    cliente.paso = "editando_carrito";
-    cliente.ultimaActividad = new Date();
+    cliente.paso =
+      "editando_carrito";
+
+    cliente.productoPendiente =
+      null;
+
+    cliente.ultimaActividad =
+      new Date();
 
     await cliente.save();
 
-    const editableOrder = cliente.pedidos
-      .map(item => `${item.cantidad} ${item.nombre}`)
-      .join("\n");
+    const editableOrder =
+      cliente.pedidos
+        .map(
+          item =>
+            `${item.cantidad} ${item.nombre}`
+        )
+        .join("\n");
 
     return sendText(
       numero,
-      `✏️ Copia este pedido, modifícalo y envíalo nuevamente:\n\n${editableOrder}\n\nEjemplo:\n2 Aguachile verde\n1 Coca Cola`
+      `✏️ Edita tu pedido completo y envíalo nuevamente.
+
+PEDIDO ACTUAL:
+
+${editableOrder}
+
+Puedes cambiar cantidades, quitar productos o agregar otros.
+
+Ejemplo:
+
+2 Aguachile verde
+1 Coca Cola`
     );
   }
 
-  if (
-    cliente.paso === "editando_carrito" &&
-    input.kind === "text"
-  ) {
-    const detected = detectProducts(command);
-
-    if (!detected.length) {
-      return sendText(
-        numero,
-        "No pude identificar productos en el pedido editado. Intenta escribir una línea por producto."
-      );
-    }
-
-    cliente.pedidos = [];
-    cliente.estadoPedido = "sin_pedido";
-    cliente.productoPendiente = null;
-
-    detected.forEach(({ product, quantity }) => {
-      addProduct(
-        cliente,
-        product,
-        quantity
-      );
-    });
-
-    cliente.paso = "inicio";
-    cliente.ultimaActividad = new Date();
-
-    await cliente.save();
-
-    return sendButtons(
-      numero,
-      `✅ Actualicé tu pedido:\n\n${ticket(cliente)}`,
-      [
-        {
-          id: "show_menu",
-          title: "➕ Agregar más",
-        },
-        {
-          id: "show_cart",
-          title: "🛒 Ver carrito",
-        },
-        {
-          id: "confirm_order",
-          title: "✅ Confirmar",
-        },
-      ]
-    );
-  }
-
-  /* =========================
+    /* =========================
      CONFIRMAR PEDIDO
   ========================= */
 
@@ -607,11 +629,15 @@ async function handleIncoming(message) {
   ) {
     emptyOrder(cliente);
 
+    cliente.paso = "inicio";
+    cliente.productoPendiente = null;
+    cliente.ultimaActividad = new Date();
+
     await cliente.save();
 
     return sendText(
       numero,
-      "Tu carrito quedó vacío."
+      "🗑️ Tu carrito quedó vacío."
     );
   }
 
@@ -627,12 +653,18 @@ async function handleIncoming(message) {
     text.includes("cuánto tarda")
   ) {
     const estados = {
-      sin_pedido: "No tienes un pedido activo.",
-      armando: "Tu pedido aún no está confirmado.",
+      sin_pedido:
+        "No tienes un pedido activo.",
+
+      armando:
+        "Tu pedido todavía no está confirmado.",
+
       confirmado:
-        "Tu pedido fue recibido. En breve pasará a cocina.",
+        "✅ Tu pedido fue recibido. En breve pasará a cocina.",
+
       cocina:
         "🍳 Tu pedido está siendo preparado en cocina.",
+
       en_camino:
         "🚚 Tu pedido ya va en camino.",
     };
@@ -642,7 +674,9 @@ async function handleIncoming(message) {
       estados[cliente.estadoPedido] ||
         "No pude identificar el estado de tu pedido."
     );
-  }  /* =========================
+  }
+
+  /* =========================
      SALUDOS
   ========================= */
 
@@ -661,7 +695,10 @@ async function handleIncoming(message) {
       text.includes(greeting)
     )
   ) {
-    return welcome(numero, cliente);
+    return welcome(
+      numero,
+      cliente
+    );
   }
 
   /* =========================
@@ -669,27 +706,39 @@ async function handleIncoming(message) {
   ========================= */
 
   if (input.kind === "text") {
-    const detected = detectProducts(command);
+    if (
+      [
+        "confirmado",
+        "cocina",
+        "en_camino",
+      ].includes(cliente.estadoPedido)
+    ) {
+      return sendText(
+        numero,
+        "Ya tienes un pedido activo. Espera a que sea entregado o cancelado antes de iniciar otro."
+      );
+    }
+
+    const detected =
+      detectProducts(command);
 
     if (detected.length) {
-      if (
-        ["confirmado", "cocina", "en_camino"].includes(
-          cliente.estadoPedido
-        )
-      ) {
-        return sendText(
-          numero,
-          "Ya tienes un pedido activo. Espera a que sea entregado o cancelado antes de iniciar otro."
-        );
-      }
+      detected.forEach(
+        ({ product, quantity }) => {
+          addProduct(
+            cliente,
+            product,
+            quantity
+          );
+        }
+      );
 
-      detected.forEach(({ product, quantity }) => {
-        addProduct(
-          cliente,
-          product,
-          quantity
-        );
-      });
+      cliente.paso = "inicio";
+      cliente.productoPendiente =
+        null;
+
+      cliente.ultimaActividad =
+        new Date();
 
       await cliente.save();
 
@@ -725,7 +774,10 @@ async function handleIncoming(message) {
      RESPUESTA PREDETERMINADA
   ========================= */
 
-  return welcome(numero, cliente);
+  return welcome(
+    numero,
+    cliente
+  );
 }
 
 module.exports = {
