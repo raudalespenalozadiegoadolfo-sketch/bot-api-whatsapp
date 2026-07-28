@@ -1,8 +1,23 @@
-const { alreadyProcessed } = require("../services/messageService");
-const { extractInput } = require("../services/inputService");
-const { findOrCreateCliente } = require("../services/clienteService");
-const { normalize, isThanks } = require("../services/utilsService");
-const { detectProducts } = require("../services/productMatcherService");
+const {
+  alreadyProcessed,
+} = require("../services/messageService");
+
+const {
+  extractInput,
+} = require("../services/inputService");
+
+const {
+  findOrCreateCliente,
+} = require("../services/clienteService");
+
+const {
+  normalize,
+  isThanks,
+} = require("../services/utilsService");
+
+const {
+  detectProducts,
+} = require("../services/productMatcherService");
 
 const {
   addProduct,
@@ -10,7 +25,9 @@ const {
   emptyOrder,
 } = require("../services/carritoService");
 
-const { ticket } = require("../services/ticketService");
+const {
+  ticket,
+} = require("../services/ticketService");
 
 const {
   confirmOrder,
@@ -37,24 +54,68 @@ const env = require("../config/env");
 ========================= */
 
 function storeUrl() {
-  return env.STORE_URL || "http://localhost:10000/tienda";
+  return (
+    env.STORE_URL ||
+    "http://localhost:10000/tienda"
+  );
 }
 
 function menuImageUrl() {
   const baseUrl =
     env.PUBLIC_URL ||
-    (env.STORE_URL
-      ? env.STORE_URL.replace(/\/tienda\/?$/, "")
-      : "https://bot-api-whatsapp.onrender.com");
+    (
+      env.STORE_URL
+        ? env.STORE_URL.replace(
+            /\/tienda\/?$/,
+            ""
+          )
+        : "https://bot-api-whatsapp.onrender.com"
+    );
 
   return `${baseUrl.replace(/\/$/, "")}/menu.jpg`;
 }
 
+function hasActiveOrder(cliente) {
+  return [
+    "confirmado",
+    "cocina",
+    "en_camino",
+  ].includes(cliente.estadoPedido);
+}
+
 /* =========================
-   MENÚ PRINCIPAL
+   BOTONES DEL CARRITO
 ========================= */
 
-async function welcome(numero, cliente) {
+function cartButtons() {
+  return [
+    {
+      id: "show_menu",
+      title: "➕ Agregar más",
+    },
+    {
+      id: "show_cart",
+      title: "🛒 Ver carrito",
+    },
+    {
+      id: "confirm_order",
+      title: "✅ Confirmar",
+    },
+  ];
+}
+
+/* =========================
+   BIENVENIDA
+========================= */
+
+async function welcome(
+  numero,
+  cliente
+) {
+  const restaurante =
+    env.RESTAURANT_NAME ||
+    "Marisco Alegre";
+
   const saludo = cliente.nombre
     ? `¡Hola, ${cliente.nombre}!`
     : "¡Hola!";
@@ -63,51 +124,58 @@ async function welcome(numero, cliente) {
     await sendImage(
       numero,
       menuImageUrl(),
-      `🦐 Menú de ${env.RESTAURANT_NAME || "Marisco Alegre"}`
+      `🦐 Menú de ${restaurante}`
     );
   } catch (error) {
     console.warn(
       "⚠️ No se pudo enviar la imagen del menú:",
-      error.response?.data || error.message
+      error.response?.data ||
+        error.message
     );
   }
 
   await sendList(
     numero,
-    env.RESTAURANT_NAME || "Marisco Alegre",
-    `${saludo} Bienvenido a ${
-      env.RESTAURANT_NAME || "Marisco Alegre"
-    }. ¿Qué deseas hacer?`,
+    restaurante,
+    `${saludo} Bienvenido a ${restaurante}. ¿Qué deseas hacer?`,
     "Ver opciones",
     [
       {
         id: "show_menu",
         title: "🍽️ Ver menú",
-        description: "Ordenar por WhatsApp",
+        description:
+          "Ordenar por WhatsApp",
       },
       {
         id: "store_link",
         title: "🌐 Tienda online",
-        description: "Abrir menú web",
+        description:
+          "Editar y confirmar pedido",
       },
       {
         id: "show_cart",
         title: "🛒 Mi carrito",
-        description: "Revisar productos",
+        description:
+          "Revisar productos agregados",
       },
       {
         id: "order_status",
         title: "📦 Mi pedido",
-        description: "Consultar estado",
+        description:
+          "Consultar estado",
       },
     ]
   );
 
   return sendText(
     numero,
-    `🌐 También puedes realizar tu pedido directamente aquí:\n${storeUrl()}`
+    `🌐 En la tienda puedes cambiar productos y cantidades antes de confirmar:\n${storeUrl()}`
   );
 }
+
+/* =========================
+   MENÚ POR WHATSAPP
+========================= */
 
 function showMenu(numero) {
   return sendButtons(
@@ -126,37 +194,57 @@ function showMenu(numero) {
   );
 }
 
-function showCategories(numero, type) {
-  const categories = getCategories(type);
+function showCategories(
+  numero,
+  type
+) {
+  const categories =
+    getCategories(type);
 
-  const rows = categories.map((category, index) => ({
-    id: `category_${type}_${index}`,
-    title: category,
-    description: "Ver productos disponibles",
-  }));
+  const rows = categories.map(
+    (category, index) => ({
+      id: `category_${type}_${index}`,
+      title: category,
+      description:
+        "Ver productos disponibles",
+    })
+  );
 
   return sendList(
     numero,
-    type === "food" ? "Comida" : "Bebidas",
+    type === "food"
+      ? "Comida"
+      : "Bebidas",
     "Selecciona una categoría",
     "Ver categorías",
     rows
   );
 }
 
-function showProducts(numero, type, categoryIndex) {
-  const categories = getCategories(type);
-  const category = categories[categoryIndex];
+function showProducts(
+  numero,
+  type,
+  categoryIndex
+) {
+  const categories =
+    getCategories(type);
+
+  const category =
+    categories[categoryIndex];
 
   if (!category) {
     return showMenu(numero);
   }
 
-  const rows = getProductsByCategory(type, category).map(product => ({
-    id: `product_${product.id}`,
-    title: product.name,
-    description: `$${product.price}`,
-  }));
+  const rows =
+    getProductsByCategory(
+      type,
+      category
+    ).map(product => ({
+      id: `product_${product.id}`,
+      title: product.name,
+      description: `$${product.price}`,
+    }));
 
   return sendList(
     numero,
@@ -171,8 +259,11 @@ function showProducts(numero, type, categoryIndex) {
    FLUJO PRINCIPAL
 ========================= */
 
-async function handleIncoming(message) {
-  const processed = await alreadyProcessed(message.id);
+async function handleIncoming(
+  message
+) {
+  const processed =
+    await alreadyProcessed(message.id);
 
   if (processed) {
     return;
@@ -180,88 +271,27 @@ async function handleIncoming(message) {
 
   const numero = message.from;
   const input = extractInput(message);
-  const cliente = await findOrCreateCliente(numero);
 
-  const command = input.value || "";
-  const text = normalize(command);
+  const cliente =
+    await findOrCreateCliente(numero);
+
+  const command =
+    input.value || "";
+
+  const text =
+    normalize(command);
 
   /* =========================
      AGRADECIMIENTOS
   ========================= */
 
-  if (input.kind === "text" && isThanks(text)) {
+  if (
+    input.kind === "text" &&
+    isThanks(text)
+  ) {
     return sendText(
       numero,
       "😊 Gracias por tu preferencia. Esperamos atenderte nuevamente."
-    );
-  }
-
-  /* =========================
-     RECIBIR CARRITO EDITADO
-  ========================= */
-
-  if (
-    cliente.paso === "editando_carrito" &&
-    input.kind === "text"
-  ) {
-    const detected = detectProducts(command);
-
-    if (!detected.length) {
-      return sendText(
-        numero,
-        `No pude identificar ningún producto.
-
-Escribe nuevamente TODO tu pedido, preferentemente una línea por producto.
-
-Ejemplo:
-
-2 Aguachile verde
-1 Coca Cola`
-      );
-    }
-
-    /*
-     * Solo reemplazamos el carrito después de confirmar
-     * que el mensaje nuevo contiene productos válidos.
-     */
-    cliente.pedidos = [];
-    cliente.estadoPedido = "sin_pedido";
-    cliente.productoPendiente = null;
-
-    detected.forEach(({ product, quantity }) => {
-      addProduct(
-        cliente,
-        product,
-        quantity
-      );
-    });
-
-    cliente.estadoPedido = cliente.pedidos.length
-      ? "armando"
-      : "sin_pedido";
-
-    cliente.paso = "inicio";
-    cliente.ultimaActividad = new Date();
-
-    await cliente.save();
-
-    return sendButtons(
-      numero,
-      `✅ Reemplacé tu carrito correctamente.\n\n${ticket(cliente)}`,
-      [
-        {
-          id: "show_menu",
-          title: "➕ Agregar más",
-        },
-        {
-          id: "edit_cart",
-          title: "✏️ Editar carrito",
-        },
-        {
-          id: "confirm_order",
-          title: "✅ Confirmar",
-        },
-      ]
     );
   }
 
@@ -270,16 +300,21 @@ Ejemplo:
   ========================= */
 
   if (input.kind === "location") {
-    if (cliente.paso !== "esperando_ubicacion") {
+    if (
+      cliente.paso !==
+      "esperando_ubicacion"
+    ) {
       return sendText(
         numero,
-        "Recibí tu ubicación. Confirma primero tu pedido desde el carrito."
+        "Recibí tu ubicación. Primero confirma tu pedido desde el carrito."
       );
     }
 
     cliente.direccion = {
-      latitude: input.value.latitude,
-      longitude: input.value.longitude,
+      latitude:
+        input.value.latitude,
+      longitude:
+        input.value.longitude,
     };
 
     return finalizeOrder(cliente);
@@ -290,14 +325,31 @@ Ejemplo:
   ========================= */
 
   if (
-    cliente.paso === "esperando_nombre" &&
+    cliente.paso ===
+      "esperando_nombre" &&
     input.kind === "text"
   ) {
-    cliente.nombre = input.value.slice(0, 80);
+    const nombre =
+      String(input.value || "")
+        .trim()
+        .slice(0, 80);
 
-    cliente.paso = cliente.direccion
-      ? "confirmando_direccion"
-      : "esperando_ubicacion";
+    if (!nombre) {
+      return sendText(
+        numero,
+        "Escribe el nombre para tu pedido."
+      );
+    }
+
+    cliente.nombre = nombre;
+
+    cliente.paso =
+      cliente.direccion
+        ? "confirmando_direccion"
+        : "esperando_ubicacion";
+
+    cliente.ultimaActividad =
+      new Date();
 
     await cliente.save();
 
@@ -320,7 +372,7 @@ Ejemplo:
 
     return sendText(
       numero,
-      `Gracias, ${cliente.nombre}. Ahora compárteme tu ubicación.`
+      `Gracias, ${cliente.nombre}. Ahora compárteme tu ubicación usando el clip de WhatsApp.`
     );
   }
 
@@ -329,12 +381,38 @@ Ejemplo:
   ========================= */
 
   if (
-    cliente.paso === "esperando_cantidad" &&
-    (input.kind === "text" || input.kind === "button")
+    cliente.paso ===
+      "esperando_cantidad" &&
+    (
+      input.kind === "text" ||
+      input.kind === "button"
+    )
   ) {
-    const cantidad = command.startsWith("quantity_")
-      ? parseInt(command.replace("quantity_", ""), 10)
-      : parseInt(text, 10);
+    if (hasActiveOrder(cliente)) {
+      cliente.paso = "inicio";
+      cliente.productoPendiente =
+        null;
+
+      await cliente.save();
+
+      return sendText(
+        numero,
+        "Tu pedido ya fue confirmado y no se puede editar."
+      );
+    }
+
+    const cantidad =
+      command.startsWith(
+        "quantity_"
+      )
+        ? parseInt(
+            command.replace(
+              "quantity_",
+              ""
+            ),
+            10
+          )
+        : parseInt(text, 10);
 
     if (
       !Number.isInteger(cantidad) ||
@@ -343,15 +421,17 @@ Ejemplo:
     ) {
       return sendText(
         numero,
-        "Por favor escribe una cantidad válida entre 1 y 20."
+        "Escribe una cantidad válida entre 1 y 20."
       );
     }
 
-    const product = cliente.productoPendiente;
+    const product =
+      cliente.productoPendiente;
 
     if (!product) {
       cliente.paso = "inicio";
-      cliente.productoPendiente = null;
+      cliente.productoPendiente =
+        null;
 
       await cliente.save();
 
@@ -367,33 +447,23 @@ Ejemplo:
       cantidad
     );
 
-    cliente.productoPendiente = null;
+    cliente.productoPendiente =
+      null;
+
     cliente.paso = "inicio";
-    cliente.ultimaActividad = new Date();
+    cliente.ultimaActividad =
+      new Date();
 
     await cliente.save();
 
     return sendButtons(
       numero,
       `✅ Agregado: ${cantidad}x ${product.name}\n💰 Total: $${totalOf(cliente)}`,
-      [
-        {
-          id: "show_menu",
-          title: "➕ Agregar más",
-        },
-        {
-          id: "edit_cart",
-          title: "✏️ Editar carrito",
-        },
-        {
-          id: "confirm_order",
-          title: "✅ Confirmar",
-        },
-      ]
+      cartButtons()
     );
   }
 
-    /* =========================
+  /* =========================
      DIRECCIÓN GUARDADA
   ========================= */
 
@@ -402,8 +472,11 @@ Ejemplo:
   }
 
   if (command === "address_no") {
-    cliente.paso = "esperando_ubicacion";
-    cliente.ultimaActividad = new Date();
+    cliente.paso =
+      "esperando_ubicacion";
+
+    cliente.ultimaActividad =
+      new Date();
 
     await cliente.save();
 
@@ -419,8 +492,19 @@ Ejemplo:
 
   if (
     command === "show_menu" ||
-    ["menu", "ver menu", "menú"].includes(text)
+    [
+      "menu",
+      "ver menu",
+      "menú",
+    ].includes(text)
   ) {
+    if (hasActiveOrder(cliente)) {
+      return sendText(
+        numero,
+        "Tu pedido ya fue confirmado y no se puede editar. Puedes consultar su estado en “Mi pedido”."
+      );
+    }
+
     return showMenu(numero);
   }
 
@@ -434,9 +518,16 @@ Ejemplo:
     text.includes("online") ||
     text.includes("en linea")
   ) {
+    if (hasActiveOrder(cliente)) {
+      return sendText(
+        numero,
+        `Tu pedido ya fue confirmado y no puede editarse.\n\nPuedes consultar su estado desde “Mi pedido”.`
+      );
+    }
+
     return sendText(
       numero,
-      `🌐 Tienda online:\n${storeUrl()}\n\nCuando confirmes el carrito, el pedido llegará a este chat para terminar el proceso.`
+      `🌐 Tienda online:\n${storeUrl()}\n\nAhí puedes agregar, quitar y cambiar cantidades antes de confirmar.`
     );
   }
 
@@ -445,6 +536,13 @@ Ejemplo:
   ========================= */
 
   if (command === "type_food") {
+    if (hasActiveOrder(cliente)) {
+      return sendText(
+        numero,
+        "Tu pedido ya fue confirmado y no se pueden agregar más productos."
+      );
+    }
+
     return showCategories(
       numero,
       "food"
@@ -452,13 +550,31 @@ Ejemplo:
   }
 
   if (command === "type_drink") {
+    if (hasActiveOrder(cliente)) {
+      return sendText(
+        numero,
+        "Tu pedido ya fue confirmado y no se pueden agregar más productos."
+      );
+    }
+
     return showCategories(
       numero,
       "drink"
     );
   }
 
-  if (command.startsWith("category_")) {
+  if (
+    command.startsWith(
+      "category_"
+    )
+  ) {
+    if (hasActiveOrder(cliente)) {
+      return sendText(
+        numero,
+        "Tu pedido ya fue confirmado y no se pueden agregar más productos."
+      );
+    }
+
     const [, type, index] =
       command.split("_");
 
@@ -473,24 +589,23 @@ Ejemplo:
      SELECCIÓN DE PRODUCTO
   ========================= */
 
-  if (command.startsWith("product_")) {
-    if (
-      [
-        "confirmado",
-        "cocina",
-        "en_camino",
-      ].includes(cliente.estadoPedido)
-    ) {
+  if (
+    command.startsWith(
+      "product_"
+    )
+  ) {
+    if (hasActiveOrder(cliente)) {
       return sendText(
         numero,
-        "Ya tienes un pedido activo. Espera a que sea entregado o cancelado antes de iniciar otro."
+        "Tu pedido ya fue confirmado y no se puede editar."
       );
     }
 
-    const productId = command.replace(
-      "product_",
-      ""
-    );
+    const productId =
+      command.replace(
+        "product_",
+        ""
+      );
 
     const product =
       findProductById(productId);
@@ -505,7 +620,8 @@ Ejemplo:
       category: product.category,
       name: product.name,
       price: product.price,
-      aliases: product.aliases || [],
+      aliases:
+        product.aliases || [],
     };
 
     cliente.paso =
@@ -538,17 +654,24 @@ Ejemplo:
       );
     }
 
+    if (hasActiveOrder(cliente)) {
+      return sendText(
+        numero,
+        `${ticket(cliente, true)}\n\n🔒 El pedido ya está confirmado y no puede editarse.`
+      );
+    }
+
     return sendButtons(
       numero,
-      ticket(cliente),
+      `${ticket(cliente)}\n\nPara modificar productos o cantidades, utiliza la tienda online antes de confirmar:\n${storeUrl()}`,
       [
         {
           id: "confirm_order",
           title: "✅ Confirmar",
         },
         {
-          id: "edit_cart",
-          title: "✏️ Editar carrito",
+          id: "show_menu",
+          title: "➕ Agregar más",
         },
         {
           id: "empty_cart",
@@ -559,54 +682,6 @@ Ejemplo:
   }
 
   /* =========================
-     ACTIVAR EDICIÓN DEL CARRITO
-  ========================= */
-
-  if (command === "edit_cart") {
-    if (!cliente.pedidos.length) {
-      return sendText(
-        numero,
-        "Tu carrito está vacío."
-      );
-    }
-
-    cliente.paso =
-      "editando_carrito";
-
-    cliente.productoPendiente =
-      null;
-
-    cliente.ultimaActividad =
-      new Date();
-
-    await cliente.save();
-
-    const editableOrder =
-      cliente.pedidos
-        .map(
-          item =>
-            `${item.cantidad} ${item.nombre}`
-        )
-        .join("\n");
-
-    return sendText(
-      numero,
-      `✏️ Edita tu pedido completo y envíalo nuevamente.
-
-PEDIDO ACTUAL:
-
-${editableOrder}
-
-Puedes cambiar cantidades, quitar productos o agregar otros.
-
-Ejemplo:
-
-2 Aguachile verde
-1 Coca Cola`
-    );
-  }
-
-    /* =========================
      CONFIRMAR PEDIDO
   ========================= */
 
@@ -615,6 +690,13 @@ Ejemplo:
     text === "confirmar" ||
     text.includes("finalizar")
   ) {
+    if (hasActiveOrder(cliente)) {
+      return sendText(
+        numero,
+        "Tu pedido ya está confirmado."
+      );
+    }
+
     return confirmOrder(cliente);
   }
 
@@ -627,11 +709,21 @@ Ejemplo:
     text === "cancelar" ||
     text.includes("vaciar")
   ) {
+    if (hasActiveOrder(cliente)) {
+      return sendText(
+        numero,
+        "Tu pedido ya fue confirmado. Solo puede cancelarse desde el panel del negocio."
+      );
+    }
+
     emptyOrder(cliente);
 
     cliente.paso = "inicio";
-    cliente.productoPendiente = null;
-    cliente.ultimaActividad = new Date();
+    cliente.productoPendiente =
+      null;
+
+    cliente.ultimaActividad =
+      new Date();
 
     await cliente.save();
 
@@ -671,7 +763,9 @@ Ejemplo:
 
     return sendText(
       numero,
-      estados[cliente.estadoPedido] ||
+      estados[
+        cliente.estadoPedido
+      ] ||
         "No pude identificar el estado de tu pedido."
     );
   }
@@ -691,8 +785,9 @@ Ejemplo:
   ];
 
   if (
-    greetingWords.some(greeting =>
-      text.includes(greeting)
+    greetingWords.some(
+      greeting =>
+        text.includes(greeting)
     )
   ) {
     return welcome(
@@ -706,16 +801,10 @@ Ejemplo:
   ========================= */
 
   if (input.kind === "text") {
-    if (
-      [
-        "confirmado",
-        "cocina",
-        "en_camino",
-      ].includes(cliente.estadoPedido)
-    ) {
+    if (hasActiveOrder(cliente)) {
       return sendText(
         numero,
-        "Ya tienes un pedido activo. Espera a que sea entregado o cancelado antes de iniciar otro."
+        "Tu pedido ya fue confirmado y no se puede editar."
       );
     }
 
@@ -724,7 +813,10 @@ Ejemplo:
 
     if (detected.length) {
       detected.forEach(
-        ({ product, quantity }) => {
+        ({
+          product,
+          quantity,
+        }) => {
           addProduct(
             cliente,
             product,
@@ -744,7 +836,10 @@ Ejemplo:
 
       const resumen = detected
         .map(
-          ({ product, quantity }) =>
+          ({
+            product,
+            quantity,
+          }) =>
             `• ${quantity}x ${product.name}`
         )
         .join("\n");
@@ -752,20 +847,7 @@ Ejemplo:
       return sendButtons(
         numero,
         `✅ Agregué a tu carrito:\n${resumen}\n\n💰 Total: $${totalOf(cliente)}`,
-        [
-          {
-            id: "show_menu",
-            title: "➕ Agregar más",
-          },
-          {
-            id: "edit_cart",
-            title: "✏️ Editar carrito",
-          },
-          {
-            id: "confirm_order",
-            title: "✅ Confirmar",
-          },
-        ]
+        cartButtons()
       );
     }
   }

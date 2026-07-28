@@ -32,16 +32,17 @@ const clienteSchema = new mongoose.Schema({
   pedidoOrigen: { type: String, default: "whatsapp" },
 
   paso: {
-    type: String,
-    enum: [
-      "inicio",
-      "esperando_nombre",
-      "esperando_ubicacion",
-      "confirmando_direccion",
-      "esperando_cantidad",
-    ],
-    default: "inicio",
-  },
+  type: String,
+  enum: [
+    "inicio",
+    "esperando_nombre",
+    "esperando_ubicacion",
+    "confirmando_direccion",
+    "esperando_cantidad",
+    "editando_carrito",
+  ],
+  default: "inicio",
+},
 
   estadoPedido: {
     type: String,
