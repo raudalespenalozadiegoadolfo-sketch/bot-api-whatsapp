@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Marisco Alegre | Productos</title>
+
+  <style>
+    :root {
+      --bg: #f5f5f1;
+      --card: #ffffff;
+      --ink: #111827;
+      --muted: #667085;
+      --line: #e5e7eb;
+      --orange: #ff5a1f;
+      --orange-soft: #fff0e9;
+      --green: #0f9f61;
+      --red: #b42318;
+      --dark: #101114;
+      --shadow: 0 18px 50px rgba(17, 24, 39, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .layout {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 250px 1fr;
+    }
+
+    .sidebar {
+      padding: 24px 18px;
+      background: var(--dark);
+      color: #ffffff;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .brand-icon {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 16px;
+      background: var(--orange);
+      font-size: 26px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 19px;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: #b7bcc7;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .menu {
+      display: grid;
+      gap: 8px;
+    }
+
+    .menu a,
+    .menu button {
+      width: 100%;
+      border: 0;
+      padding: 13px 14px;
+      border-radius: 14px;
+      background: transparent;
+      color: #d9dce2;
+      text-align: left;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .menu a.active {
+      background: var(--orange);
+      color: #ffffff;
+    }
+
+    .menu button:hover,
+    .menu a:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .content {
+      padding: 26px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .topbar h2 {
+      margin: 0;
+      font-size: 30px;
+    }
+
+    .topbar p {
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+
+    .primary-button {
+      border: 0;
+      padding: 13px 18px;
+      border-radius: 14px;
+      background: var(--orange);
+      color: #ffffff;
+      font-weight: 900;
+    }
+
+    .primary-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .card {
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .search {
+      width: min(380px, 100%);
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      outline: none;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 14px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    td strong {
+      display: block;
+    }
+
+    td small {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+    }
+
+    .status {
+      display: inline-flex;
+      padding: 6px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .status.active {
+      background: #e8f7ef;
+      color: #147a4b;
+    }
+
+    .status.inactive {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .edit-button,
+    .delete-button {
+      border: 0;
+      padding: 9px 11px;
+      border-radius: 11px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .edit-button {
+      background: var(--orange-soft);
+      color: #b43b0c;
+    }
+
+    .delete-button {
+      background: #fee4e2;
+      color: var(--red);
+    }
+
+    .empty {
+      padding: 36px;
+      color: var(--muted);
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal.open {
+      display: grid;
+    }
+
+    .modal-card {
+      width: min(620px, 100%);
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      border-radius: 24px;
+      background: #ffffff;
+      box-shadow: var(--shadow);
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .modal-head h3 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .close-button {
+      width: 40px;
+      height: 40px;
+      border: 0;
+      border-radius: 12px;
+      background: #f3f4f6;
+      font-weight: 900;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .secondary-button {
+      border: 1px solid var(--line);
+      padding: 12px 16px;
+      border-radius: 13px;
+      background: #ffffff;
+      font-weight: 900;
+    }
+
+    .message {
+      min-height: 20px;
+      margin-top: 12px;
+      color: var(--red);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    @media (max-width: 850px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .field.full {
+        grid-column: auto;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="layout">
+
+    <aside class="sidebar">
+
+      <div class="brand">
+        <div class="brand-icon">🦐</div>
+
+        <div>
+          <h1>Marisco Alegre</h1>
+          <p>Administrador PRO</p>
+        </div>
+      </div>
+
+      <nav class="menu">
+
+        <a
+          class="active"
+          href="/admin/productos"
+        >
+          🍽️ Productos
+        </a>
+
+        <a href="/panel">
+          📦 Pedidos
+        </a>
+
+        <a href="/tienda">
+          🛒 Ver tienda
+        </a>
+
+        <button
+          type="button"
+          onclick="logout()"
+        >
+          🚪 Cerrar sesión
+        </button>
+
+      </nav>
+
+    </aside>
+
+    <main class="content">
+
+      <section class="topbar">
+
+        <div>
+          <h2>Productos</h2>
+
+          <p>
+            Agrega, edita, activa o elimina productos del menú.
+          </p>
+        </div>
+
+        <button
+          class="primary-button"
+          type="button"
+          onclick="openCreateModal()"
+        >
+          + Nuevo producto
+        </button>
+
+      </section>
+
+      <section class="card">
+
+        <div class="toolbar">
+
+          <input
+            class="search"
+            id="searchInput"
+            placeholder="Buscar producto o categoría"
+            oninput="renderProducts()"
+          >
+
+        </div>
+
+        <div class="table-wrap">
+
+          <table>
+
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th>Precio</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+
+            <tbody id="productsBody"></tbody>
+
+          </table>
+
+        </div>
+
+        <div
+          class="empty"
+          id="emptyState"
+          hidden
+        >
+          Todavía no hay productos registrados.
+        </div>
+
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- MODAL PRODUCTO -->
+
+  <div
+    class="modal"
+    id="productModal"
+  >
+
+    <section class="modal-card">
+
+      <div class="modal-head">
+
+        <h3 id="modalTitle">
+          Nuevo producto
+        </h3>
+
+        <button
+          class="close-button"
+          type="button"
+          onclick="closeModal()"
+        >
+          ✕
+        </button>
+
+      </div>
+
+      <form id="productForm">
+
+        <input
+          id="productId"
+          type="hidden"
+        >
+
+        <div class="form-grid">
+
+          <!-- NOMBRE -->
+
+          <div class="field">
+
+            <label for="name">
+              Nombre
+            </label>
+
+            <input
+              id="name"
+              required
+              maxlength="120"
+              placeholder="Nombre del producto"
+            >
+
+          </div>
+
+          <!-- CATEGORÍA CORREGIDA -->
+
+          <div class="field">
+
+            <label for="category">
+              Categoría
+            </label>
+
+            <select
+              id="category"
+              required
+              onchange="handleCategoryChange()"
+            >
+
+              <option value="">
+                Selecciona una categoría
+              </option>
+
+            </select>
+
+          </div>
+
+          <!-- PRECIO -->
+
+          <div class="field">
+
+            <label for="price">
+              Precio
+            </label>
+
+            <input
+              id="price"
+              type="number"
+              min="0"
+              step="0.01"
+              required
+              placeholder="0"
+            >
+
+          </div>
+
+          <!-- TIPO -->
+
+          <div class="field">
+
+            <label for="type">
+              Tipo
+            </label>
+
+            <select id="type">
+
+              <option value="food">
+                Comida
+              </option>
+
+              <option value="drink">
+                Bebida
+              </option>
+
+            </select>
+
+          </div>
+
+          <!-- ESTADO -->
+
+          <div class="field">
+
+            <label for="active">
+              Estado
+            </label>
+
+            <select id="active">
+
+              <option value="true">
+                Activo
+              </option>
+
+              <option value="false">
+                Inactivo
+              </option>
+
+            </select>
+
+          </div>
+
+          <!-- IMAGEN -->
+
+          <div class="field">
+
+            <label for="imageUrl">
+              URL de imagen
+            </label>
+
+            <input
+              id="imageUrl"
+              type="url"
+              placeholder="https://..."
+            >
+
+          </div>
+
+          <!-- DESCRIPCIÓN -->
+
+          <div class="field full">
+
+            <label for="description">
+              Descripción
+            </label>
+
+            <textarea
+              id="description"
+              placeholder="Descripción del producto"
+            ></textarea>
+
+          </div>
+
+        </div>
+
+        <div
+          class="message"
+          id="formMessage"
+        ></div>
+
+        <div class="form-actions">
+
+          <button
+            class="secondary-button"
+            type="button"
+            onclick="closeModal()"
+          >
+            Cancelar
+          </button>
+
+          <button
+            class="primary-button"
+            id="saveButton"
+            type="submit"
+          >
+            Guardar producto
+          </button>
+
+        </div>
+
+      </form>
+
+    </section>
+
+  </div>
+
+  <script>
+
+    let products = [];
+    let categories = [];
+
+    const categoriesApiUrl =
+      "/api/admin/categorias";
+
+    const apiUrl =
+      "/api/admin/productos";
+
+
+    /* =========================
+       REQUEST
+    ========================= */
+
+    async function request(
+      url,
+      options = {}
+    ) {
+
+      const response =
+        await fetch(url, {
+
+          credentials: "same-origin",
+
+          ...options,
+
+          headers: {
+
+            "Content-Type":
+              "application/json",
+
+            ...(options.headers || {}),
+
+          },
+
+        });
+
+
+      let data = {};
+
+      try {
+        data = await response.json();
+      } catch (_error) {
+        data = {};
+      }
+
+
+      if (response.status === 401) {
+
+        window.location.href =
+          "/admin/login";
+
+        throw new Error(
+          "Sesión terminada."
+        );
+
+      }
+
+
+      if (!response.ok) {
+
+        throw new Error(
+          data.error ||
+          "Ocurrió un error."
+        );
+
+      }
+
+
+      return data;
+    }
+
+
+    /* =========================
+       CARGAR PRODUCTOS
+    ========================= */
+
+    async function loadProducts() {
+
+      try {
+
+        const data =
+          await request(apiUrl);
+
+
+        products =
+          Array.isArray(data)
+
+            ? data
+
+            : (
+                Array.isArray(
+                  data.productos
+                )
+
+                  ? data.productos
+
+                  : []
+              );
+
+
+        renderProducts();
+
+
+      } catch (error) {
+
+        console.error(error);
+
+
+        const empty =
+          document.getElementById(
+            "emptyState"
+          );
+
+
+        empty.hidden = false;
+
+        empty.textContent =
+          error.message;
+
+      }
+
+    }
+
+
+    /* =========================
+       MOSTRAR PRODUCTOS
+    ========================= */
+
+    function renderProducts() {
+
+      const body =
+        document.getElementById(
+          "productsBody"
+        );
+
+
+      const emptyState =
+        document.getElementById(
+          "emptyState"
+        );
+
+
+      const search =
+        document
+          .getElementById(
+            "searchInput"
+          )
+          .value
+          .trim()
+          .toLowerCase();
+
+
+      const filtered =
+        products.filter(product => {
+
+          const name =
+            String(
+              product.name ||
+              product.nombre ||
+              ""
+            ).toLowerCase();
+
+
+          const category =
+            String(
+              product.category ||
+              product.categoria ||
+              ""
+            ).toLowerCase();
+
+
+          return (
+            name.includes(search) ||
+            category.includes(search)
+          );
+
+        });
+
+
+      emptyState.hidden =
+        filtered.length > 0;
+
+
+      if (!filtered.length) {
+
+        body.innerHTML = "";
+
+        return;
+
+      }
+
+
+      body.innerHTML =
+        filtered
+          .map(product => {
+
+            const id =
+              product._id ||
+              product.id;
+
+
+            const name =
+              product.name ||
+              product.nombre ||
+              "Sin nombre";
+
+
+            const category =
+              product.category ||
+              product.categoria ||
+              "Sin categoría";
+
+
+            const price =
+              Number(
+                product.price ??
+                product.precio ??
+                0
+              );
+
+
+            const active =
+              product.active ??
+              product.activo ??
+              true;
+
+
+            return `
+              <tr>
+
+                <td>
+
+                  <strong>
+                    ${escapeHtml(name)}
+                  </strong>
+
+                  <small>
+                    ${escapeHtml(
+                      product.description ||
+                      product.descripcion ||
+                      ""
+                    )}
+                  </small>
+
+                </td>
+
+
+                <td>
+                  ${escapeHtml(category)}
+                </td>
+
+
+                <td>
+                  $${price.toLocaleString(
+                    "es-MX"
+                  )}
+                </td>
+
+
+                <td>
+
+                  <span
+                    class="status ${
+                      active
+                        ? "active"
+                        : "inactive"
+                    }"
+                  >
+
+                    ${
+                      active
+                        ? "Activo"
+                        : "Inactivo"
+                    }
+
+                  </span>
+
+                </td>
+
+
+                <td>
+
+                  <div class="actions">
+
+                    <button
+                      class="edit-button"
+                      type="button"
+                      onclick='openEditModal(${JSON.stringify(id)})'
+                    >
+                      Editar
+                    </button>
+
+
+                    <button
+                      class="delete-button"
+                      type="button"
+                      onclick='deleteProduct(${JSON.stringify(id)})'
+                    >
+                      Eliminar
+                    </button>
+
+                  </div>
+
+                </td>
+
+              </tr>
+            `;
+
+          })
+          .join("");
+
+    }
+
+
+    /* =========================
+       CARGAR CATEGORÍAS
+    ========================= */
+
+    async function loadCategories() {
+
+      try {
+
+        const data =
+          await request(
+            categoriesApiUrl
+          );
+
+
+        categories =
+          Array.isArray(
+            data.categorias
+          )
+
+            ? data.categorias
+
+            : Array.isArray(data)
+
+              ? data
+
+              : [];
+
+
+        renderCategoryOptions();
+
+
+      } catch (error) {
+
+        console.error(
+          "Error cargando categorías:",
+          error
+        );
+
+
+        categories = [];
+
+        /*
+         * Aunque falle la API de categorías,
+         * utilizamos las categorías de los
+         * productos existentes.
+         */
+
+        renderCategoryOptions();
+
+      }
+
+    }
+
+
+    /* =========================
+       OPCIONES DE CATEGORÍA
+    ========================= */
+
+    function renderCategoryOptions(
+      selectedValue = ""
+    ) {
+
+      const select =
+        document.getElementById(
+          "category"
+        );
+
+
+      const databaseCategories =
+        categories.map(category => {
+
+          if (
+            typeof category === "string"
+          ) {
+            return category;
+          }
+
+          return (
+            category.name ||
+            category.nombre ||
+            ""
+          );
+
+        });
+
+
+      const productCategories =
+        products.map(product =>
+          product.category ||
+          product.categoria ||
+          ""
+        );
+
+
+      const categoryNames = [
+
+        ...new Set([
+
+          ...databaseCategories,
+
+          ...productCategories,
+
+        ])
+
+      ]
+        .filter(Boolean)
+        .sort((a, b) =>
+          String(a).localeCompare(
+            String(b),
+            "es",
+            {
+              sensitivity: "base",
+            }
+          )
+        );
+
+
+      select.innerHTML = `
+
+        <option value="">
+          Selecciona una categoría
+        </option>
+
+        ${categoryNames
+
+          .map(category => `
+
+            <option
+              value="${escapeHtml(category)}"
+            >
+              ${escapeHtml(category)}
+            </option>
+
+          `)
+
+          .join("")}
+
+
+        <option value="__new__">
+          ➕ Crear nueva categoría
+        </option>
+
+      `;
+
+
+      if (
+        selectedValue &&
+        !categoryNames.includes(
+          selectedValue
+        )
+      ) {
+
+        const option =
+          document.createElement(
+            "option"
+          );
+
+
+        option.value =
+          selectedValue;
+
+
+        option.textContent =
+          selectedValue;
+
+
+        select.insertBefore(
+          option,
+          select.lastElementChild
+        );
+
+      }
+
+
+      select.value =
+        selectedValue || "";
+
+    }
+
+
+    /* =========================
+       CREAR NUEVA CATEGORÍA
+    ========================= */
+
+    async function handleCategoryChange() {
+
+      const select =
+        document.getElementById(
+          "category"
+        );
+
+
+      if (
+        select.value !== "__new__"
+      ) {
+
+        return;
+
+      }
+
+
+      const name =
+        window.prompt(
+          "Escribe el nombre de la nueva categoría:"
+        );
+
+
+      if (!name?.trim()) {
+
+        select.value = "";
+
+        return;
+
+      }
+
+
+      try {
+
+        const cleanName =
+          name.trim();
+
+
+        const data =
+          await request(
+            categoriesApiUrl,
+            {
+
+              method: "POST",
+
+              body: JSON.stringify({
+                name: cleanName,
+              }),
+
+            }
+          );
+
+
+        await loadCategories();
+
+
+        const createdName =
+          data.categoria?.name ||
+          data.categoria?.nombre ||
+          data.name ||
+          cleanName;
+
+
+        renderCategoryOptions(
+          createdName
+        );
+
+
+      } catch (error) {
+
+        console.error(error);
+
+
+        window.alert(
+          error.message
+        );
+
+
+        select.value = "";
+
+      }
+
+    }
+
+
+    /* =========================
+       ABRIR NUEVO PRODUCTO
+    ========================= */
+
+    function openCreateModal() {
+
+      document.getElementById(
+        "modalTitle"
+      ).textContent =
+        "Nuevo producto";
+
+
+      document.getElementById(
+        "productForm"
+      ).reset();
+
+
+      document.getElementById(
+        "productId"
+      ).value = "";
+
+
+      document.getElementById(
+        "active"
+      ).value = "true";
+
+
+      document.getElementById(
+        "type"
+      ).value = "food";
+
+
+      document.getElementById(
+        "formMessage"
+      ).textContent = "";
+
+
+      renderCategoryOptions();
+
+
+      document.getElementById(
+        "productModal"
+      ).classList.add("open");
+
+    }
+
+
+    /* =========================
+       EDITAR PRODUCTO
+    ========================= */
+
+    function openEditModal(id) {
+
+      const product =
+        products.find(item =>
+
+          String(
+            item._id ||
+            item.id
+          ) === String(id)
+
+        );
+
+
+      if (!product) {
+
+        return;
+
+      }
+
+
+      document.getElementById(
+        "modalTitle"
+      ).textContent =
+        "Editar producto";
+
+
+      document.getElementById(
+        "productId"
+      ).value = id;
+
+
+      document.getElementById(
+        "name"
+      ).value =
+        product.name ||
+        product.nombre ||
+        "";
+
+
+      renderCategoryOptions(
+
+        product.category ||
+        product.categoria ||
+        ""
+
+      );
+
+
+      document.getElementById(
+        "price"
+      ).value =
+        product.price ??
+        product.precio ??
+        0;
+
+
+      document.getElementById(
+        "type"
+      ).value =
+        product.type ||
+        product.tipo ||
+        "food";
+
+
+      document.getElementById(
+        "active"
+      ).value =
+        String(
+          product.active ??
+          product.activo ??
+          true
+        );
+
+
+      document.getElementById(
+        "imageUrl"
+      ).value =
+        product.imageUrl ||
+        product.imagen ||
+        "";
+
+
+      document.getElementById(
+        "description"
+      ).value =
+        product.description ||
+        product.descripcion ||
+        "";
+
+
+      document.getElementById(
+        "formMessage"
+      ).textContent = "";
+
+
+      document.getElementById(
+        "productModal"
+      ).classList.add("open");
+
+    }
+
+
+    /* =========================
+       CERRAR MODAL
+    ========================= */
+
+    function closeModal() {
+
+      document.getElementById(
+        "productModal"
+      ).classList.remove("open");
+
+    }
+
+
+    /* =========================
+       GUARDAR PRODUCTO
+    ========================= */
+
+    document
+      .getElementById(
+        "productForm"
+      )
+      .addEventListener(
+        "submit",
+        async event => {
+
+          event.preventDefault();
+
+
+          const id =
+            document.getElementById(
+              "productId"
+            ).value;
+
+
+          const category =
+            document
+              .getElementById(
+                "category"
+              )
+              .value
+              .trim();
+
+
+          const payload = {
+
+            name:
+              document
+                .getElementById(
+                  "name"
+                )
+                .value
+                .trim(),
+
+
+            category,
+
+
+            price:
+              Number(
+                document
+                  .getElementById(
+                    "price"
+                  )
+                  .value
+              ),
+
+
+            type:
+              document.getElementById(
+                "type"
+              ).value,
+
+
+            active:
+              document.getElementById(
+                "active"
+              ).value === "true",
+
+
+            imageUrl:
+              document
+                .getElementById(
+                  "imageUrl"
+                )
+                .value
+                .trim(),
+
+
+            description:
+              document
+                .getElementById(
+                  "description"
+                )
+                .value
+                .trim(),
+
+          };
+
+
+          const message =
+            document.getElementById(
+              "formMessage"
+            );
+
+
+          const saveButton =
+            document.getElementById(
+              "saveButton"
+            );
+
+
+          message.textContent = "";
+
+
+          if (!payload.name) {
+
+            message.textContent =
+              "Escribe el nombre del producto.";
+
+            return;
+
+          }
+
+
+          if (
+            !payload.category ||
+            payload.category === "__new__"
+          ) {
+
+            message.textContent =
+              "Selecciona una categoría.";
+
+            return;
+
+          }
+
+
+          if (
+            !Number.isFinite(
+              payload.price
+            ) ||
+            payload.price < 0
+          ) {
+
+            message.textContent =
+              "Escribe un precio válido.";
+
+            return;
+
+          }
+
+
+          saveButton.disabled = true;
+
+
+          try {
+
+            if (id) {
+
+              await request(
+                `${apiUrl}/${id}`,
+                {
+
+                  method: "PUT",
+
+                  body:
+                    JSON.stringify(
+                      payload
+                    ),
+
+                }
+              );
+
+            } else {
+
+              await request(
+                apiUrl,
+                {
+
+                  method: "POST",
+
+                  body:
+                    JSON.stringify(
+                      payload
+                    ),
+
+                }
+              );
+
+            }
+
+
+            closeModal();
+
+
+            await loadProducts();
+
+            await loadCategories();
+
+
+          } catch (error) {
+
+            console.error(error);
+
+            message.textContent =
+              error.message;
+
+
+          } finally {
+
+            saveButton.disabled = false;
+
+          }
+
+        }
+      );
+
+
+    /* =========================
+       ELIMINAR PRODUCTO
+    ========================= */
+
+    async function deleteProduct(id) {
+
+      const confirmed =
+        window.confirm(
+          "¿Seguro que deseas eliminar este producto?"
+        );
+
+
+      if (!confirmed) {
+
+        return;
+
+      }
+
+
+      try {
+
+        await request(
+          `${apiUrl}/${id}`,
+          {
+            method: "DELETE",
+          }
+        );
+
+
+        await loadProducts();
+
+        await loadCategories();
+
+
+      } catch (error) {
+
+        console.error(error);
+
+
+        window.alert(
+          error.message
+        );
+
+      }
+
+    }
+
+
+    /* =========================
+       CERRAR SESIÓN
+    ========================= */
+
+    async function logout() {
+
+      try {
+
+        await request(
+          "/api/auth/logout",
+          {
+            method: "POST",
+          }
+        );
+
+      } catch (error) {
+
+        console.error(error);
+
+      }
+
+
+      window.location.href =
+        "/admin/login";
+
+    }
+
+
+    /* =========================
+       ESCAPAR HTML
+    ========================= */
+
+    function escapeHtml(value) {
+
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    }
+
+
+    /* =========================
+       INICIAR
+    ========================= */
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      async () => {
+
+        /*
+         * Primero cargamos productos porque
+         * también podemos obtener de ellos
+         * las categorías ya existentes.
+         */
+
+        await loadProducts();
+
+        await loadCategories();
+
+      }
+    );
+
+  </script>
+
+</body>
+</html>

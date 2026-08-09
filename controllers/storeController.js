@@ -1,9 +1,10 @@
 const path = require("path");
 
 const Cliente = require("../models/Cliente");
+const Producto = require("../models/Producto");
 
 const {
-  products,
+  products: legacyProducts,
 } = require("../services/menuService");
 
 const {
@@ -40,27 +41,199 @@ function showStore(_req, res) {
 }
 
 /* =========================
+   PRODUCTO DE MONGODB
+========================= */
+
+function serializeDatabaseProduct(product) {
+  return {
+    id: String(product._id),
+
+    name: product.name,
+
+    category: product.category,
+
+    price: Number(product.price),
+
+    type:
+      product.type === "drink"
+        ? "drink"
+        : "food",
+
+    description:
+      product.description || "",
+
+    imageUrl:
+      product.imageUrl || "",
+
+    aliases: Array.isArray(
+      product.aliases
+    )
+      ? product.aliases
+      : [],
+
+    active:
+      product.active !== false,
+
+    source: "mongodb",
+  };
+}
+
+/* =========================
+   PRODUCTO ANTERIOR
+========================= */
+
+function serializeLegacyProduct(product) {
+  return {
+    id: String(product.id),
+
+    name: product.name,
+
+    category: product.category,
+
+    price: Number(product.price),
+
+    type:
+      product.type === "drink"
+        ? "drink"
+        : "food",
+
+    description:
+      product.description || "",
+
+    imageUrl:
+      product.imageUrl || "",
+
+    aliases: Array.isArray(
+      product.aliases
+    )
+      ? product.aliases
+      : [],
+
+    active: true,
+
+    source: "legacy",
+  };
+}
+
+/* =========================
+   NORMALIZAR CLAVE
+========================= */
+
+function productKey(product) {
+  return `${product.category}::${product.name}`
+    .trim()
+    .toLowerCase();
+}
+
+/* =========================
+   CARGAR PRODUCTOS
+========================= */
+
+async function loadAvailableProducts() {
+  const databaseProducts =
+    await Producto.find({
+      active: {
+        $ne: false,
+      },
+    })
+      .sort({
+        category: 1,
+        order: 1,
+        name: 1,
+      })
+      .lean();
+
+  console.log(
+    "📦 Productos activos en MongoDB:",
+    databaseProducts.length
+  );
+
+  const productMap = new Map();
+
+  legacyProducts
+    .map(serializeLegacyProduct)
+    .forEach(product => {
+      productMap.set(
+        productKey(product),
+        product
+      );
+    });
+
+  databaseProducts
+    .map(serializeDatabaseProduct)
+    .forEach(product => {
+      /*
+       * Un producto de MongoDB reemplaza al producto
+       * anterior cuando coinciden nombre y categoría.
+       */
+      productMap.set(
+        productKey(product),
+        product
+      );
+    });
+
+  return Array.from(
+    productMap.values()
+  );
+}
+
+/* =========================
    OBTENER MENÚ
 ========================= */
 
-function getMenu(_req, res) {
-  const categories = [
-    ...new Set(
-      products.map(product => product.category)
-    ),
-  ];
+async function getMenu(
+  _req,
+  res,
+  next
+) {
+  try {
+    const products =
+      await loadAvailableProducts();
 
-  return res.json({
-    categories,
-    products,
-  });
+    const categories = [
+      ...new Set(
+        products
+          .map(
+            product =>
+              product.category
+          )
+          .filter(Boolean)
+      ),
+    ];
+
+    res.set({
+  "Cache-Control":
+    "no-store, no-cache, must-revalidate, proxy-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+});
+
+    return res.json({
+      ok: true,
+      categories,
+      products,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Error cargando menú:",
+      error.stack ||
+        error.message ||
+        error
+    );
+
+    return next(error);
+  }
 }
 
 /* =========================
    CREAR PEDIDO DESDE TIENDA
 ========================= */
 
-async function createStoreOrder(req, res, next) {
+async function createStoreOrder(
+  req,
+  res,
+  next
+) {
   try {
     const numero = cleanPhone(
       req.body.numero
@@ -80,27 +253,36 @@ async function createStoreOrder(req, res, next) {
 
     if (!numero) {
       return res.status(400).json({
-        error: "Número inválido",
+        error:
+          "Número inválido",
       });
     }
 
     if (!items.length) {
       return res.status(400).json({
-        error: "El carrito está vacío",
+        error:
+          "El carrito está vacío",
       });
     }
 
     const cliente =
       await Cliente.findOneAndUpdate(
-        { numero },
+        {
+          numero,
+        },
         {
           $setOnInsert: {
             numero,
           },
+
           $set: {
-            ultimaActividad: new Date(),
+            ultimaActividad:
+              new Date(),
+
             ...(nombre
-              ? { nombre }
+              ? {
+                  nombre,
+                }
               : {}),
           },
         },
@@ -112,7 +294,7 @@ async function createStoreOrder(req, res, next) {
       );
 
     /* =========================
-       PEDIDO ACTIVO
+       BLOQUEAR PEDIDO ACTIVO
     ========================= */
 
     const activeStates = [
@@ -133,31 +315,65 @@ async function createStoreOrder(req, res, next) {
     }
 
     /* =========================
+       PRODUCTOS DISPONIBLES
+    ========================= */
+
+    const availableProducts =
+      await loadAvailableProducts();
+
+    const productById =
+      new Map(
+        availableProducts.map(
+          product => [
+            String(product.id),
+            product,
+          ]
+        )
+      );
+
+    /* =========================
        LIMPIAR CARRITO ANTERIOR
     ========================= */
 
     cliente.pedidos = [];
-    cliente.estadoPedido = "sin_pedido";
-    cliente.paso = "inicio";
-    cliente.productoPendiente = null;
+    cliente.estadoPedido =
+      "sin_pedido";
+
+    cliente.paso =
+      "inicio";
+
+    cliente.productoPendiente =
+      null;
 
     /* =========================
        AGREGAR PRODUCTOS
     ========================= */
 
     for (const item of items) {
-      const product = products.find(
-        currentProduct =>
-          currentProduct.id === item.id
-      );
+      const product =
+        productById.get(
+          String(item.id)
+        );
 
-      const quantity = Math.min(
-        Math.max(
-          Number(item.cantidad || 1),
-          1
-        ),
-        20
-      );
+      const rawQuantity =
+        Number(
+          item.cantidad || 1
+        );
+
+      const quantity =
+        Math.min(
+          Math.max(
+            Number.isFinite(
+              rawQuantity
+            )
+              ? Math.trunc(
+                  rawQuantity
+                )
+              : 1,
+            1
+          ),
+          20
+        );
 
       if (product) {
         addProduct(
@@ -168,17 +384,26 @@ async function createStoreOrder(req, res, next) {
       }
     }
 
-    if (!cliente.pedidos.length) {
+    if (
+      !cliente.pedidos.length
+    ) {
       return res.status(400).json({
         error:
           "No se encontraron productos válidos en el pedido.",
       });
     }
 
-    cliente.paso = "inicio";
-    cliente.productoPendiente = null;
-    cliente.pedidoOrigen = "tienda";
-    cliente.ultimaActividad = new Date();
+    cliente.paso =
+      "inicio";
+
+    cliente.productoPendiente =
+      null;
+
+    cliente.pedidoOrigen =
+      "tienda";
+
+    cliente.ultimaActividad =
+      new Date();
 
     await cliente.save();
 
@@ -189,7 +414,10 @@ async function createStoreOrder(req, res, next) {
     try {
       await sendText(
         cliente.numero,
-        ticket(cliente, false)
+        ticket(
+          cliente,
+          false
+        )
       );
 
       await sendButtons(
@@ -212,7 +440,7 @@ async function createStoreOrder(req, res, next) {
       );
     } catch (sendError) {
       console.error(
-        "Error enviando pedido de tienda a WhatsApp:",
+        "❌ Error enviando pedido de tienda a WhatsApp:",
         sendError.response?.data ||
           sendError.message
       );
@@ -220,6 +448,7 @@ async function createStoreOrder(req, res, next) {
       return res.status(502).json({
         error:
           "El pedido se guardó, pero no se pudo enviar a WhatsApp.",
+
         detalle:
           sendError.response?.data ||
           sendError.message,
@@ -228,9 +457,16 @@ async function createStoreOrder(req, res, next) {
 
     return res.json({
       ok: true,
-      numero: cliente.numero,
-      total: totalOf(cliente),
-      pedidos: cliente.pedidos,
+
+      numero:
+        cliente.numero,
+
+      total:
+        totalOf(cliente),
+
+      pedidos:
+        cliente.pedidos,
+
       mensaje:
         "Pedido enviado a WhatsApp. Revisa el chat para confirmar.",
     });

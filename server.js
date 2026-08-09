@@ -4,7 +4,27 @@ const express = require("express");
 const mongoose = require("mongoose");
 const path = require("path");
 
+const {
+  syncLegacyCategories,
+} = require(
+  "./services/categorySyncService"
+);
+
+const session = require("express-session");
+
+const {
+  MongoStore,
+} = require("connect-mongo");
+
 const env = require("./config/env");
+
+const adminCategoryRoutes = require(
+  "./routes/adminCategoryRoutes"
+);
+
+/* =========================
+   RUTAS EXISTENTES
+========================= */
 
 const webhookRoutes = require(
   "./routes/webhookRoutes"
@@ -18,7 +38,110 @@ const panelRoutes = require(
   "./routes/panelRoutes"
 );
 
+/* =========================
+   RUTAS ADMINISTRATIVAS
+========================= */
+
+const authRoutes = require(
+  "./routes/authRoutes"
+);
+
+const adminProductRoutes = require(
+  "./routes/adminProductRoutes"
+);
+
+/* =========================
+   SEGURIDAD ADMINISTRATIVA
+========================= */
+
+const {
+  requireAdmin,
+  requireLoginPage,
+} = require(
+  "./middleware/requireAdmin"
+);
+
+const {
+  createInitialAdmin,
+} = require(
+  "./controllers/authController"
+);
+
 const app = express();
+
+const isProduction =
+  process.env.NODE_ENV ===
+  "production";
+
+/*
+ * Render funciona detrás de un proxy.
+ * Esto permite utilizar cookies seguras HTTPS
+ * correctamente en producción.
+ */
+if (isProduction) {
+  app.set("trust proxy", 1);
+}
+
+/* =========================
+   VALIDAR CONFIGURACIÓN
+========================= */
+
+if (
+  isProduction &&
+  !process.env.SESSION_SECRET
+) {
+  throw new Error(
+    "Falta la variable SESSION_SECRET en Render."
+  );
+}
+
+const sessionSecret =
+  process.env.SESSION_SECRET ||
+  "desarrollo-local-cambiar-esta-clave";
+
+/* =========================
+   SESIONES ADMINISTRATIVAS
+========================= */
+
+app.use(
+  session({
+    name: "marisco_admin",
+
+    secret: sessionSecret,
+
+    resave: false,
+
+    saveUninitialized: false,
+
+    rolling: true,
+
+    store: MongoStore.create({
+      mongoUrl: env.MONGO_URI,
+
+      collectionName:
+        "admin_sessions",
+
+      ttl: 60 * 60 * 12,
+
+      autoRemove:
+        "native",
+    }),
+
+    cookie: {
+      httpOnly: true,
+
+      secure: isProduction,
+
+      sameSite: "lax",
+
+      maxAge:
+        1000 *
+        60 *
+        60 *
+        12,
+    },
+  })
+);
 
 /* =========================
    JSON + FIRMA DEL WEBHOOK
@@ -28,10 +151,100 @@ app.use(
   express.json({
     limit: "10mb",
 
-    verify: (req, _res, buffer) => {
+    verify: (
+      req,
+      _res,
+      buffer
+    ) => {
       req.rawBody = buffer;
     },
   })
+);
+
+app.use(
+  express.urlencoded({
+    extended: false,
+    limit: "2mb",
+  })
+);
+
+/* =========================
+   PÁGINAS ADMINISTRATIVAS
+========================= */
+
+/*
+ * Entrada principal del administrador.
+ */
+app.get(
+  "/admin",
+  (req, res) => {
+    if (req.session?.usuario) {
+      return res.redirect(
+        "/admin/productos"
+      );
+    }
+
+    return res.redirect(
+      "/admin/login"
+    );
+  }
+);
+
+/*
+ * Página de inicio de sesión.
+ */
+app.get(
+  "/admin/login",
+  (req, res) => {
+    if (req.session?.usuario) {
+      return res.redirect(
+        "/admin/productos"
+      );
+    }
+
+    return res.sendFile(
+      path.join(
+        __dirname,
+        "public",
+        "admin-login.html"
+      )
+    );
+  }
+);
+
+/*
+ * Página administrativa protegida.
+ */
+app.get(
+  "/admin/productos",
+  requireLoginPage,
+  (_req, res) => {
+    return res.sendFile(
+      path.join(
+        __dirname,
+        "public",
+        "admin-productos.html"
+      )
+    );
+  }
+);
+
+/*
+ * Evita que alguien abra directamente
+ * el HTML protegido sin iniciar sesión.
+ */
+app.get(
+  "/admin-productos.html",
+  requireLoginPage,
+  (_req, res) => {
+    return res.sendFile(
+      path.join(
+        __dirname,
+        "public",
+        "admin-productos.html"
+      )
+    );
+  }
 );
 
 /* =========================
@@ -40,12 +253,51 @@ app.use(
 
 app.use(
   express.static(
-    path.join(__dirname, "public")
+    path.join(
+      __dirname,
+      "public"
+    ),
+    {
+      index: false,
+
+      maxAge: isProduction
+        ? "1h"
+        : 0,
+    }
   )
 );
 
 /* =========================
-   RUTAS
+   API DE AUTENTICACIÓN
+========================= */
+
+app.use(
+  "/api/auth",
+  authRoutes
+);
+
+/* =========================
+   API ADMINISTRATIVA
+========================= */
+
+/*
+ * Todas las rutas bajo esta dirección
+ * necesitan sesión de administrador.
+ */
+app.use(
+  "/api/admin/productos",
+  requireAdmin,
+  adminProductRoutes
+);
+
+app.use(
+  "/api/admin/categorias",
+  requireAdmin,
+  adminCategoryRoutes
+);
+
+/* =========================
+   RUTAS EXISTENTES
 ========================= */
 
 app.use(webhookRoutes);
@@ -53,38 +305,81 @@ app.use(storeRoutes);
 app.use(panelRoutes);
 
 /* =========================
+   INFORMACIÓN DE SESIÓN
+========================= */
+
+app.get(
+  "/api/admin/session",
+  requireAdmin,
+  (req, res) => {
+    return res.json({
+      ok: true,
+      usuario:
+        req.session.usuario,
+    });
+  }
+);
+
+/* =========================
    RUTA DE SALUD
 ========================= */
 
-app.get("/health", (_req, res) => {
-  return res.json({
-    ok: true,
-    service: "Marisco Alegre PRO",
-    database:
-      mongoose.connection.readyState === 1
-        ? "connected"
-        : "disconnected",
-    timestamp: new Date().toISOString(),
-  });
-});
+app.get(
+  "/health",
+  (_req, res) => {
+    return res.json({
+      ok: true,
+
+      service:
+        "Marisco Alegre PRO",
+
+      database:
+        mongoose.connection
+          .readyState === 1
+          ? "connected"
+          : "disconnected",
+
+      environment:
+        process.env.NODE_ENV ||
+        "development",
+
+      timestamp:
+        new Date().toISOString(),
+    });
+  }
+);
 
 /* =========================
    RUTA NO ENCONTRADA
 ========================= */
 
-app.use((req, res) => {
-  return res.status(404).json({
-    error: "Ruta no encontrada",
-    path: req.originalUrl,
-  });
-});
+app.use(
+  (req, res) => {
+    return res
+      .status(404)
+      .json({
+        ok: false,
+
+        error:
+          "Ruta no encontrada",
+
+        path:
+          req.originalUrl,
+      });
+  }
+);
 
 /* =========================
    MANEJO DE ERRORES
 ========================= */
 
 app.use(
-  (error, _req, res, _next) => {
+  (
+    error,
+    _req,
+    res,
+    _next
+  ) => {
     console.error(
       "❌ Error del servidor:",
       error.response?.data ||
@@ -93,14 +388,27 @@ app.use(
         error
     );
 
-    return res.status(500).json({
-      error: "Error interno",
-      detalle:
-        process.env.NODE_ENV ===
-        "production"
-          ? undefined
-          : error.message,
-    });
+    if (
+      res.headersSent
+    ) {
+      return;
+    }
+
+    return res
+      .status(
+        error.status || 500
+      )
+      .json({
+        ok: false,
+
+        error:
+          "Error interno",
+
+        detalle:
+          isProduction
+            ? undefined
+            : error.message,
+      });
   }
 );
 
@@ -118,15 +426,29 @@ async function startServer() {
       "✅ MongoDB conectado correctamente"
     );
 
-    app.listen(env.PORT, () => {
-      console.log(
-        `✅ Marisco Alegre PRO listo en el puerto ${env.PORT}`
-      );
-    });
+    await createInitialAdmin();
+
+    // Sincronizar categorías del menú actual
+    await syncLegacyCategories();
+
+    app.listen(
+      env.PORT,
+      () => {
+        console.log(
+          `✅ Marisco Alegre PRO listo en el puerto ${env.PORT}`
+        );
+
+        console.log(
+          `🔐 Administrador: http://localhost:${env.PORT}/admin/login`
+        );
+      }
+    );
   } catch (error) {
     console.error(
       "❌ No fue posible iniciar el servidor:",
-      error.message
+      error.stack ||
+        error.message ||
+        error
     );
 
     process.exitCode = 1;

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Marisco Alegre | Administrador</title>
+
+  <style>
+    :root {
+      --bg: #f5f5f1;
+      --card: #ffffff;
+      --ink: #111827;
+      --muted: #667085;
+      --line: #e5e7eb;
+      --orange: #ff5a1f;
+      --red: #b91c1c;
+      --shadow: 0 24px 70px rgba(17, 24, 39, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        radial-gradient(
+          circle at top left,
+          rgba(255, 90, 31, 0.18),
+          transparent 35%
+        ),
+        var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .login-card {
+      width: min(440px, 100%);
+      padding: 34px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 26px;
+    }
+
+    .brand-icon {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border-radius: 18px;
+      background: #fff0e9;
+      font-size: 28px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .intro {
+      margin-bottom: 24px;
+    }
+
+    .intro h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .intro p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    form {
+      display: grid;
+      gap: 14px;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--muted);
+    }
+
+    input {
+      width: 100%;
+      padding: 15px 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      outline: none;
+      font: inherit;
+    }
+
+    input:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 4px rgba(255, 90, 31, 0.12);
+    }
+
+    button {
+      width: 100%;
+      margin-top: 6px;
+      padding: 15px;
+      border: 0;
+      border-radius: 16px;
+      background: var(--orange);
+      color: white;
+      font-weight: 900;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .message {
+      min-height: 20px;
+      margin-top: 14px;
+      color: var(--red);
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .footer {
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="login-card">
+    <section class="brand">
+      <div class="brand-icon">🦐</div>
+
+      <div>
+        <h1>Marisco Alegre</h1>
+        <p>Panel administrativo</p>
+      </div>
+    </section>
+
+    <section class="intro">
+      <h2>Iniciar sesión</h2>
+
+      <p>
+        Ingresa con tu usuario y contraseña para administrar
+        productos, precios, categorías, cupones y pedidos.
+      </p>
+    </section>
+
+    <form id="loginForm">
+      <div>
+        <label for="usuario">
+          Usuario
+        </label>
+
+        <input
+          id="usuario"
+          name="usuario"
+          autocomplete="username"
+          placeholder="Ejemplo: admin"
+          required
+        >
+      </div>
+
+      <div>
+        <label for="password">
+          Contraseña
+        </label>
+
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          placeholder="Escribe tu contraseña"
+          required
+        >
+      </div>
+
+      <button
+        id="loginButton"
+        type="submit"
+      >
+        Entrar al administrador
+      </button>
+    </form>
+
+    <div
+      class="message"
+      id="message"
+    ></div>
+
+    <div class="footer">
+      Acceso exclusivo para personal autorizado.
+    </div>
+  </main>
+
+  <script>
+    const loginForm =
+      document.getElementById("loginForm");
+
+    const loginButton =
+      document.getElementById("loginButton");
+
+    const message =
+      document.getElementById("message");
+
+    loginForm.addEventListener(
+      "submit",
+      async event => {
+        event.preventDefault();
+
+        message.textContent = "";
+
+        const usuario =
+          document
+            .getElementById("usuario")
+            .value
+            .trim();
+
+        const password =
+          document
+            .getElementById("password")
+            .value;
+
+        if (!usuario || !password) {
+          message.textContent =
+            "Escribe usuario y contraseña.";
+
+          return;
+        }
+
+        loginButton.disabled = true;
+        loginButton.textContent =
+          "Ingresando...";
+
+        try {
+          const response =
+            await fetch(
+              "/api/auth/login",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+                body: JSON.stringify({
+                  usuario,
+                  password,
+                }),
+              }
+            );
+
+          const data =
+            await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              data.error ||
+                "No se pudo iniciar sesión."
+            );
+          }
+
+          window.location.href =
+            "/admin/productos";
+        } catch (error) {
+          message.textContent =
+            error.message;
+        } finally {
+          loginButton.disabled = false;
+          loginButton.textContent =
+            "Entrar al administrador";
+        }
+      }
+    );
+  </script>
+</body>
+</html>
