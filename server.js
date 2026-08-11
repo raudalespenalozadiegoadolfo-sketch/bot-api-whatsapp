@@ -10,6 +10,16 @@ const {
   "./services/categorySyncService"
 );
 
+const {
+  syncLegacyProducts,
+} = require(
+  "./services/productSyncService"
+);
+
+const adminComboRoutes = require(
+  "./routes/adminComboRoutes"
+);
+
 const session = require("express-session");
 
 const {
@@ -18,9 +28,19 @@ const {
 
 const env = require("./config/env");
 
+/* =========================
+   RUTAS DE CATEGORÍAS
+========================= */
+
 const adminCategoryRoutes = require(
   "./routes/adminCategoryRoutes"
 );
+
+/* =========================
+   RUTAS DE COMBOS
+========================= */
+
+
 
 /* =========================
    RUTAS EXISTENTES
@@ -213,7 +233,7 @@ app.get(
 );
 
 /*
- * Página administrativa protegida.
+ * Página administrativa de productos.
  */
 app.get(
   "/admin/productos",
@@ -230,8 +250,25 @@ app.get(
 );
 
 /*
+ * Página administrativa de combos.
+ */
+app.get(
+  "/admin/combos",
+  requireLoginPage,
+  (_req, res) => {
+    return res.sendFile(
+      path.join(
+        __dirname,
+        "public",
+        "admin-combos.html"
+      )
+    );
+  }
+);
+
+/*
  * Evita que alguien abra directamente
- * el HTML protegido sin iniciar sesión.
+ * el HTML de productos sin iniciar sesión.
  */
 app.get(
   "/admin-productos.html",
@@ -242,6 +279,24 @@ app.get(
         __dirname,
         "public",
         "admin-productos.html"
+      )
+    );
+  }
+);
+
+/*
+ * Evita que alguien abra directamente
+ * el HTML de combos sin iniciar sesión.
+ */
+app.get(
+  "/admin-combos.html",
+  requireLoginPage,
+  (_req, res) => {
+    return res.sendFile(
+      path.join(
+        __dirname,
+        "public",
+        "admin-combos.html"
       )
     );
   }
@@ -281,8 +336,7 @@ app.use(
 ========================= */
 
 /*
- * Todas las rutas bajo esta dirección
- * necesitan sesión de administrador.
+ * Productos.
  */
 app.use(
   "/api/admin/productos",
@@ -290,10 +344,22 @@ app.use(
   adminProductRoutes
 );
 
+/*
+ * Categorías.
+ */
 app.use(
   "/api/admin/categorias",
   requireAdmin,
   adminCategoryRoutes
+);
+
+/*
+ * Combos.
+ */
+app.use(
+  "/api/admin/combos",
+  requireAdmin,
+  adminComboRoutes
 );
 
 /* =========================
@@ -301,7 +367,9 @@ app.use(
 ========================= */
 
 app.use(webhookRoutes);
+
 app.use(storeRoutes);
+
 app.use(panelRoutes);
 
 /* =========================
@@ -314,6 +382,7 @@ app.get(
   (req, res) => {
     return res.json({
       ok: true,
+
       usuario:
         req.session.usuario,
     });
@@ -426,10 +495,19 @@ async function startServer() {
       "✅ MongoDB conectado correctamente"
     );
 
+    /*
+     * Crear el administrador inicial
+     * si todavía no existe.
+     */
     await createInitialAdmin();
 
-    // Sincronizar categorías del menú actual
+    /*
+     * Sincronizar categorías
+     * del menú actual.
+     */
     await syncLegacyCategories();
+
+    await syncLegacyProducts();
 
     app.listen(
       env.PORT,
@@ -440,6 +518,10 @@ async function startServer() {
 
         console.log(
           `🔐 Administrador: http://localhost:${env.PORT}/admin/login`
+        );
+
+        console.log(
+          `🍔 Combos: http://localhost:${env.PORT}/admin/combos`
         );
       }
     );

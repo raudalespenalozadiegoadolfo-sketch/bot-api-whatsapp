@@ -1,0 +1,2580 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Marisco Alegre | Combos</title>
+
+  <style>
+    :root {
+      --bg: #f5f5f1;
+      --card: #ffffff;
+      --ink: #111827;
+      --muted: #667085;
+      --line: #e5e7eb;
+      --orange: #ff5a1f;
+      --orange-soft: #fff0e9;
+      --green: #0f9f61;
+      --green-soft: #e9f8f1;
+      --red: #b42318;
+      --red-soft: #fee4e2;
+      --dark: #101114;
+      --shadow: 0 18px 50px rgba(17, 24, 39, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .layout {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 250px 1fr;
+    }
+
+    .sidebar {
+      padding: 24px 18px;
+      background: var(--dark);
+      color: #ffffff;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .brand-icon {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 16px;
+      background: var(--orange);
+      font-size: 26px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 19px;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: #b7bcc7;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .menu {
+      display: grid;
+      gap: 8px;
+    }
+
+    .menu a,
+    .menu button {
+      width: 100%;
+      border: 0;
+      padding: 13px 14px;
+      border-radius: 14px;
+      background: transparent;
+      color: #d9dce2;
+      text-align: left;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .menu a.active {
+      background: var(--orange);
+      color: #ffffff;
+    }
+
+    .menu a:hover,
+    .menu button:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .content {
+      padding: 26px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .topbar h2 {
+      margin: 0;
+      font-size: 30px;
+    }
+
+    .topbar p {
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+
+    .primary-button {
+      border: 0;
+      padding: 13px 18px;
+      border-radius: 14px;
+      background: var(--orange);
+      color: #ffffff;
+      font-weight: 900;
+    }
+
+    .card {
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .toolbar {
+      margin-bottom: 18px;
+    }
+
+    .search {
+      width: min(380px, 100%);
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      outline: none;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 14px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .status {
+      display: inline-flex;
+      padding: 6px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .status.active {
+      background: var(--green-soft);
+      color: #147a4b;
+    }
+
+    .status.inactive {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
+    .price-old {
+      color: var(--muted);
+      font-size: 12px;
+      text-decoration: line-through;
+    }
+
+    .price-new {
+      color: var(--green);
+      font-weight: 900;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .edit-button,
+    .delete-button {
+      border: 0;
+      padding: 9px 11px;
+      border-radius: 11px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .edit-button {
+      background: var(--orange-soft);
+      color: #b43b0c;
+    }
+
+    .delete-button {
+      background: var(--red-soft);
+      color: var(--red);
+    }
+
+    .empty {
+      padding: 36px;
+      color: var(--muted);
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal.open {
+      display: grid;
+    }
+
+    .modal-card {
+      width: min(900px, 100%);
+      max-height: 92vh;
+      overflow-y: auto;
+      padding: 24px;
+      border-radius: 24px;
+      background: #ffffff;
+      box-shadow: var(--shadow);
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .modal-head h3 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .close-button {
+      width: 40px;
+      height: 40px;
+      border: 0;
+      border-radius: 12px;
+      background: #f3f4f6;
+      font-weight: 900;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .combo-item-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .combo-item-card {
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fafafa;
+    }
+
+    .combo-item-grid {
+      display: grid;
+      grid-template-columns: 160px 1fr 110px 44px;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .combo-item-extra {
+      margin-top: 10px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .remove-item-button {
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--red-soft);
+      color: var(--red);
+      font-weight: 900;
+    }
+
+    .add-item-button {
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: #ffffff;
+      font-weight: 900;
+    }
+
+    .summary-box {
+      display: grid;
+      gap: 8px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #f8fafc;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .summary-row.total {
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+      font-weight: 900;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .secondary-button {
+      border: 1px solid var(--line);
+      padding: 12px 16px;
+      border-radius: 13px;
+      background: #ffffff;
+      font-weight: 900;
+    }
+
+    .message {
+      min-height: 20px;
+      margin-top: 12px;
+      color: var(--red);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .field.full {
+        grid-column: auto;
+      }
+
+      .combo-item-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .remove-item-button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="layout">
+
+    <aside class="sidebar">
+
+      <div class="brand">
+        <div class="brand-icon">🦐</div>
+
+        <div>
+          <h1>Marisco Alegre</h1>
+          <p>Administrador PRO</p>
+        </div>
+      </div>
+
+      <nav class="menu">
+
+        <a href="/admin/productos">
+          🍽️ Productos
+        </a>
+
+        <a
+          class="active"
+          href="/admin/combos"
+        >
+          🍔 Combos
+        </a>
+
+        <a href="/admin/cupones">
+          🎟️ Cupones
+        </a>
+
+        <a href="/panel">
+          📦 Pedidos
+        </a>
+
+        <a href="/tienda">
+          🛒 Ver tienda
+        </a>
+
+        <button
+          type="button"
+          onclick="logout()"
+        >
+          🚪 Cerrar sesión
+        </button>
+
+      </nav>
+
+    </aside>
+
+    <main class="content">
+
+      <section class="topbar">
+
+        <div>
+          <h2>Combos</h2>
+
+          <p>
+            Crea promociones con productos específicos
+            o categorías completas.
+          </p>
+        </div>
+
+        <button
+          class="primary-button"
+          type="button"
+          onclick="openCreateModal()"
+        >
+          + Nuevo combo
+        </button>
+
+      </section>
+
+      <section class="card">
+
+        <div class="toolbar">
+
+          <input
+            class="search"
+            id="searchInput"
+            placeholder="Buscar combo"
+            oninput="renderCombos()"
+          >
+
+        </div>
+
+        <div class="table-wrap">
+
+          <table>
+
+            <thead>
+              <tr>
+                <th>Combo</th>
+                <th>Incluye</th>
+                <th>Precio normal</th>
+                <th>Precio combo</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+
+            <tbody id="combosBody"></tbody>
+
+          </table>
+
+        </div>
+
+        <div
+          class="empty"
+          id="emptyState"
+          hidden
+        >
+          Todavía no hay combos registrados.
+        </div>
+
+      </section>
+
+    </main>
+
+  </div>
+
+  <div
+    class="modal"
+    id="comboModal"
+  >
+
+    <section class="modal-card">
+
+      <div class="modal-head">
+
+        <h3 id="modalTitle">
+          Nuevo combo
+        </h3>
+
+        <button
+          class="close-button"
+          type="button"
+          onclick="closeModal()"
+        >
+          ✕
+        </button>
+
+      </div>
+
+      <form id="comboForm">
+
+        <input
+          id="comboId"
+          type="hidden"
+        >
+
+        <div class="form-grid">
+
+          <div class="field">
+
+            <label for="name">
+              Nombre del combo
+            </label>
+
+            <input
+              id="name"
+              required
+              maxlength="120"
+              placeholder="Ejemplo: Combo Botanero"
+            >
+
+          </div>
+
+          <div class="field">
+
+            <label for="comboPrice">
+              Precio especial
+            </label>
+
+            <input
+              id="comboPrice"
+              type="number"
+              min="0"
+              step="0.01"
+              required
+              oninput="updateSummary()"
+            >
+
+          </div>
+
+          <div class="field">
+
+            <label for="active">
+              Estado
+            </label>
+
+            <select id="active">
+              <option value="true">
+                Activo
+              </option>
+
+              <option value="false">
+                Inactivo
+              </option>
+            </select>
+
+          </div>
+
+          <div class="field">
+
+            <label for="imageUrl">
+              URL de imagen
+            </label>
+
+            <input
+              id="imageUrl"
+              type="url"
+              placeholder="https://..."
+            >
+
+          </div>
+
+          <div class="field full">
+
+            <label>
+              Elementos del combo
+            </label>
+
+            <div
+              class="combo-item-list"
+              id="comboItemList"
+            ></div>
+
+            <button
+              class="add-item-button"
+              type="button"
+              onclick="addComboItem()"
+            >
+              + Agregar elemento
+            </button>
+
+          </div>
+
+          <div class="field full">
+
+            <label for="description">
+              Descripción
+            </label>
+
+            <textarea
+              id="description"
+              placeholder="Ejemplo: Elige tu aguachile y acompáñalo con dos cervezas."
+            ></textarea>
+
+          </div>
+
+          <div class="field full">
+
+            <div class="summary-box">
+
+              <div class="summary-row">
+                <span>Precio normal estimado:</span>
+
+                <strong id="normalPricePreview">
+                  $0
+                </strong>
+              </div>
+
+              <div class="summary-row">
+                <span>Precio combo:</span>
+
+                <strong id="comboPricePreview">
+                  $0
+                </strong>
+              </div>
+
+              <div class="summary-row total">
+                <span>Ahorro mínimo:</span>
+
+                <strong id="savingPreview">
+                  $0
+                </strong>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <div
+          class="message"
+          id="formMessage"
+        ></div>
+
+        <div class="form-actions">
+
+          <button
+            class="secondary-button"
+            type="button"
+            onclick="closeModal()"
+          >
+            Cancelar
+          </button>
+
+          <button
+            class="primary-button"
+            id="saveButton"
+            type="submit"
+          >
+            Guardar combo
+          </button>
+
+        </div>
+
+      </form>
+
+    </section>
+
+  </div>
+
+  <script>
+
+    let combos = [];
+    let products = [];
+    let categories = [];
+
+    const combosApiUrl =
+      "/api/admin/combos";
+
+    const productsApiUrl =
+      "/api/admin/productos";
+
+    const categoriesApiUrl =
+      "/api/admin/categorias";
+
+
+    async function request(
+      url,
+      options = {}
+    ) {
+
+      const response =
+        await fetch(
+          url,
+          {
+            credentials:
+              "same-origin",
+
+            ...options,
+
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              ...(options.headers || {}),
+            },
+          }
+        );
+
+      let data = {};
+
+      try {
+        data =
+          await response.json();
+      } catch (_error) {
+        data = {};
+      }
+
+      if (
+        response.status === 401
+      ) {
+        window.location.href =
+          "/admin/login";
+
+        throw new Error(
+          "Sesión terminada."
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+          "Ocurrió un error."
+        );
+      }
+
+      return data;
+    }
+
+
+    function money(value) {
+      return Number(
+        value || 0
+      ).toLocaleString(
+        "es-MX",
+        {
+          style: "currency",
+          currency: "MXN",
+        }
+      );
+    }
+
+
+    function escapeHtml(value) {
+      return String(
+        value ?? ""
+      )
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+
+    function getProductId(product) {
+      return String(
+        product?._id ||
+        product?.id ||
+        ""
+      );
+    }
+
+
+    function getProductName(product) {
+      return String(
+        product?.name ||
+        product?.nombre ||
+        ""
+      );
+    }
+
+
+    function getProductPrice(product) {
+      return Number(
+        product?.price ??
+        product?.precio ??
+        0
+      );
+    }
+
+
+    function getProductCategory(product) {
+      return String(
+        product?.category ||
+        product?.categoria ||
+        ""
+      );
+    }
+
+
+    async function loadProducts() {
+
+      const data =
+        await request(
+          productsApiUrl
+        );
+
+      products =
+        Array.isArray(data)
+          ? data
+          : Array.isArray(
+              data.productos
+            )
+            ? data.productos
+            : [];
+    }
+
+
+    async function loadCategories() {
+
+      const data =
+        await request(
+          categoriesApiUrl
+        );
+
+      categories =
+        Array.isArray(
+          data.categorias
+        )
+          ? data.categorias
+          : [];
+    }
+
+
+    async function loadCombos() {
+
+      const data =
+        await request(
+          combosApiUrl
+        );
+
+      combos =
+        Array.isArray(data)
+          ? data
+          : Array.isArray(
+              data.combos
+            )
+            ? data.combos
+            : [];
+
+      renderCombos();
+    }
+
+        /* =========================
+       OPCIONES DE PRODUCTOS
+    ========================= */
+
+    function productOptions(
+      selectedId = ""
+    ) {
+
+      const activeProducts =
+        products
+          .filter(
+            product =>
+              product.active !== false
+          )
+          .sort(
+            (a, b) => {
+
+              const categoryCompare =
+                getProductCategory(a)
+                  .localeCompare(
+                    getProductCategory(b),
+                    "es"
+                  );
+
+              if (
+                categoryCompare !== 0
+              ) {
+                return categoryCompare;
+              }
+
+              return getProductName(a)
+                .localeCompare(
+                  getProductName(b),
+                  "es"
+                );
+            }
+          );
+
+
+      let html = `
+        <option value="">
+          Selecciona un producto
+        </option>
+      `;
+
+
+      for (
+        const product
+        of activeProducts
+      ) {
+
+        const id =
+          getProductId(
+            product
+          );
+
+
+        html += `
+  <option
+    value="${escapeHtml(id)}"
+    ${
+      String(selectedId) ===
+      id
+        ? "selected"
+        : ""
+    }
+  >
+    ${escapeHtml(
+      getProductName(
+        product
+      )
+    )}
+    —
+    ${escapeHtml(
+      money(
+        getProductPrice(
+          product
+        )
+      )
+    )}
+  </option>
+`;
+      }
+
+
+      return html;
+    }
+
+
+    /* =========================
+       OPCIONES DE CATEGORÍAS
+    ========================= */
+
+    function categoryOptions(
+      selectedCategory = ""
+    ) {
+
+      const names = [
+        ...new Set([
+          ...categories.map(
+            category =>
+              typeof category ===
+                "string"
+                ? category
+                : (
+                    category.name ||
+                    category.nombre ||
+                    ""
+                  )
+          ),
+
+          ...products.map(
+            product =>
+              getProductCategory(
+                product
+              )
+          ),
+        ]),
+      ]
+        .filter(Boolean)
+        .sort(
+          (a, b) =>
+            String(a).localeCompare(
+              String(b),
+              "es"
+            )
+        );
+
+
+      let html = `
+        <option value="">
+          Selecciona una categoría
+        </option>
+      `;
+
+
+      for (
+        const category
+        of names
+      ) {
+
+        html += `
+          <option
+            value="${escapeHtml(
+              category
+            )}"
+            ${
+              String(
+                selectedCategory
+              ) ===
+              String(category)
+                ? "selected"
+                : ""
+            }
+          >
+            ${escapeHtml(
+              category
+            )}
+          </option>
+        `;
+      }
+
+
+      return html;
+    }
+
+
+    /* =========================
+       AGREGAR ITEM DEL COMBO
+    ========================= */
+
+    function addComboItem(
+      data = {}
+    ) {
+
+      const list =
+        document.getElementById(
+          "comboItemList"
+        );
+
+
+      const mode =
+        data.mode ===
+        "category"
+          ? "category"
+          : "product";
+
+
+      const card =
+        document.createElement(
+          "div"
+        );
+
+
+      card.className =
+        "combo-item-card";
+
+
+      card.innerHTML = `
+        <div class="combo-item-grid">
+
+          <div class="field">
+            <label>
+              Tipo
+            </label>
+
+            <select
+              class="combo-item-mode"
+            >
+              <option
+                value="product"
+                ${
+                  mode ===
+                  "product"
+                    ? "selected"
+                    : ""
+                }
+              >
+                Producto específico
+              </option>
+
+              <option
+                value="category"
+                ${
+                  mode ===
+                  "category"
+                    ? "selected"
+                    : ""
+                }
+              >
+                Categoría completa
+              </option>
+            </select>
+          </div>
+
+          <div class="field combo-main-field"></div>
+
+          <div class="field">
+            <label>
+              Cantidad
+            </label>
+
+            <input
+              class="combo-item-quantity"
+              type="number"
+              min="1"
+              max="20"
+              step="1"
+              value="${Number(
+                data.cantidad ||
+                1
+              )}"
+            >
+          </div>
+
+          <button
+            class="remove-item-button"
+            type="button"
+            title="Eliminar"
+          >
+            ✕
+          </button>
+
+        </div>
+
+        <div
+          class="combo-item-extra"
+        ></div>
+      `;
+
+
+      const modeSelect =
+        card.querySelector(
+          ".combo-item-mode"
+        );
+
+
+      const quantityInput =
+        card.querySelector(
+          ".combo-item-quantity"
+        );
+
+
+      const removeButton =
+        card.querySelector(
+          ".remove-item-button"
+        );
+
+
+      modeSelect.addEventListener(
+        "change",
+        () => {
+
+          renderComboItemFields(
+            card
+          );
+
+          updateSummary();
+        }
+      );
+
+
+      quantityInput.addEventListener(
+        "input",
+        updateSummary
+      );
+
+
+      removeButton.addEventListener(
+        "click",
+        () => {
+
+          card.remove();
+
+          updateSummary();
+        }
+      );
+
+
+      list.appendChild(
+        card
+      );
+
+
+      renderComboItemFields(
+        card,
+        data
+      );
+
+
+      updateSummary();
+    }
+
+
+    /* =========================
+       CAMPOS SEGÚN EL TIPO
+    ========================= */
+
+    function renderComboItemFields(
+      card,
+      data = {}
+    ) {
+
+      const mode =
+        card
+          .querySelector(
+            ".combo-item-mode"
+          )
+          .value;
+
+
+      const mainField =
+        card.querySelector(
+          ".combo-main-field"
+        );
+
+
+      const extra =
+        card.querySelector(
+          ".combo-item-extra"
+        );
+
+
+      if (
+        mode === "product"
+      ) {
+
+        mainField.innerHTML = `
+          <label>
+            Producto
+          </label>
+
+          <select
+            class="combo-item-product"
+          >
+            ${productOptions(
+              data.productId &&
+              typeof data.productId ===
+                "object"
+                ? (
+                    data.productId._id ||
+                    data.productId.id ||
+                    ""
+                  )
+                : (
+                    data.productId ||
+                    ""
+                  )
+            )}
+          </select>
+        `;
+
+
+        extra.innerHTML = `
+          <div class="field">
+            <label>
+              Texto opcional para el cliente
+            </label>
+
+            <input
+              class="combo-item-label"
+              maxlength="120"
+              placeholder="Ejemplo: Incluye 1 Coca Cola"
+              value="${escapeHtml(
+                data.label ||
+                ""
+              )}"
+            >
+          </div>
+        `;
+
+
+        const select =
+          mainField.querySelector(
+            ".combo-item-product"
+          );
+
+
+        select.addEventListener(
+          "change",
+          updateSummary
+        );
+
+
+        return;
+      }
+
+
+      mainField.innerHTML = `
+        <label>
+          Categoría
+        </label>
+
+        <select
+          class="combo-item-category"
+        >
+          ${categoryOptions(
+            data.category ||
+            ""
+          )}
+        </select>
+      `;
+
+
+      extra.innerHTML = `
+        <div class="field">
+          <label>
+            Texto que verá el cliente
+          </label>
+
+          <input
+            class="combo-item-label"
+            maxlength="120"
+            placeholder="Ejemplo: Elige tu aguachile"
+            value="${escapeHtml(
+              data.label ||
+              ""
+            )}"
+          >
+        </div>
+
+        <div class="field">
+          <label>
+            Opciones disponibles
+          </label>
+
+          <div
+            class="category-preview"
+          >
+            Selecciona una categoría.
+          </div>
+        </div>
+      `;
+
+
+      const categorySelect =
+        mainField.querySelector(
+          ".combo-item-category"
+        );
+
+
+      categorySelect.addEventListener(
+        "change",
+        () => {
+
+          updateCategoryPreview(
+            card
+          );
+
+          updateSummary();
+        }
+      );
+
+
+      updateCategoryPreview(
+        card
+      );
+    }
+
+
+    /* =========================
+       PREVISUALIZAR CATEGORÍA
+    ========================= */
+
+    function updateCategoryPreview(
+      card
+    ) {
+
+      const select =
+        card.querySelector(
+          ".combo-item-category"
+        );
+
+
+      const preview =
+        card.querySelector(
+          ".category-preview"
+        );
+
+
+      if (
+        !select ||
+        !preview
+      ) {
+        return;
+      }
+
+
+      const category =
+        select.value;
+
+
+      if (!category) {
+
+        preview.textContent =
+          "Selecciona una categoría.";
+
+        return;
+      }
+
+
+      const matching =
+        products.filter(
+          product =>
+            product.active !== false &&
+            getProductCategory(
+              product
+            ).toLowerCase() ===
+            category.toLowerCase()
+        );
+
+
+      if (!matching.length) {
+
+        preview.textContent =
+          "No hay productos activos en esta categoría.";
+
+        return;
+      }
+
+
+      preview.innerHTML =
+        matching
+          .map(
+            product => `
+              <div>
+                • ${escapeHtml(
+                  getProductName(
+                    product
+                  )
+                )}
+                —
+                ${escapeHtml(
+                  money(
+                    getProductPrice(
+                      product
+                    )
+                  )
+                )}
+              </div>
+            `
+          )
+          .join("");
+    }
+
+
+    /* =========================
+       LEER ITEMS DEL FORMULARIO
+    ========================= */
+
+    function getFormItems() {
+
+      const cards =
+        document.querySelectorAll(
+          ".combo-item-card"
+        );
+
+
+      const items = [];
+
+
+      for (
+        const card
+        of cards
+      ) {
+
+        const mode =
+          card
+            .querySelector(
+              ".combo-item-mode"
+            )
+            .value;
+
+
+        const cantidad =
+          Math.min(
+            Math.max(
+              Number(
+                card
+                  .querySelector(
+                    ".combo-item-quantity"
+                  )
+                  .value ||
+                1
+              ),
+              1
+            ),
+            20
+          );
+
+
+        const label =
+          card
+            .querySelector(
+              ".combo-item-label"
+            )
+            ?.value
+            ?.trim() ||
+          "";
+
+
+        if (
+          mode ===
+          "product"
+        ) {
+
+          const productId =
+            card
+              .querySelector(
+                ".combo-item-product"
+              )
+              ?.value ||
+            "";
+
+
+          if (!productId) {
+            continue;
+          }
+
+
+          items.push({
+            mode:
+              "product",
+
+            productId,
+
+            category:
+              "",
+
+            label,
+
+            cantidad,
+          });
+
+
+          continue;
+        }
+
+
+        const category =
+          card
+            .querySelector(
+              ".combo-item-category"
+            )
+            ?.value ||
+          "";
+
+
+        if (!category) {
+          continue;
+        }
+
+
+        items.push({
+          mode:
+            "category",
+
+          productId:
+            null,
+
+          category,
+
+          label,
+
+          cantidad,
+        });
+      }
+
+
+      return items;
+    }
+
+
+    /* =========================
+       PRECIO DE REFERENCIA
+    ========================= */
+
+    function getReferencePrice(
+      item
+    ) {
+
+      if (
+        item.mode ===
+        "product"
+      ) {
+
+        const product =
+          products.find(
+            current =>
+              getProductId(
+                current
+              ) ===
+              String(
+                item.productId
+              )
+          );
+
+
+        return product
+          ? getProductPrice(
+              product
+            )
+          : 0;
+      }
+
+
+      const matching =
+        products.filter(
+          product =>
+            product.active !== false &&
+            getProductCategory(
+              product
+            ).toLowerCase() ===
+            String(
+              item.category
+            ).toLowerCase()
+        );
+
+
+      if (!matching.length) {
+        return 0;
+      }
+
+
+      return Math.min(
+        ...matching.map(
+          product =>
+            getProductPrice(
+              product
+            )
+        )
+      );
+    }
+
+
+    /* =========================
+       RESUMEN DE PRECIOS
+    ========================= */
+
+    function updateSummary() {
+
+      const items =
+        getFormItems();
+
+
+      let normalPrice = 0;
+
+
+      for (
+        const item
+        of items
+      ) {
+
+        normalPrice +=
+          getReferencePrice(
+            item
+          ) *
+          Number(
+            item.cantidad ||
+            1
+          );
+      }
+
+
+      const comboPrice =
+        Number(
+          document
+            .getElementById(
+              "comboPrice"
+            )
+            .value ||
+          0
+        );
+
+
+      const saving =
+        Math.max(
+          normalPrice -
+          comboPrice,
+          0
+        );
+
+
+      document
+        .getElementById(
+          "normalPricePreview"
+        )
+        .textContent =
+          money(
+            normalPrice
+          );
+
+
+      document
+        .getElementById(
+          "comboPricePreview"
+        )
+        .textContent =
+          money(
+            comboPrice
+          );
+
+
+      document
+        .getElementById(
+          "savingPreview"
+        )
+        .textContent =
+          money(
+            saving
+          );
+    }
+
+
+    /* =========================
+       RENDER COMBOS
+    ========================= */
+
+    function renderCombos() {
+
+      const body =
+        document.getElementById(
+          "combosBody"
+        );
+
+
+      const empty =
+        document.getElementById(
+          "emptyState"
+        );
+
+
+      const search =
+        document
+          .getElementById(
+            "searchInput"
+          )
+          .value
+          .trim()
+          .toLowerCase();
+
+
+      const filtered =
+        combos.filter(
+          combo =>
+            String(
+              combo.name ||
+              ""
+            )
+              .toLowerCase()
+              .includes(search)
+        );
+
+
+      body.innerHTML = "";
+
+
+      if (!filtered.length) {
+
+        empty.hidden = false;
+
+        empty.textContent =
+          search
+            ? "No se encontraron combos."
+            : "Todavía no hay combos registrados.";
+
+        return;
+      }
+
+
+      empty.hidden = true;
+
+
+      for (
+        const combo
+        of filtered
+      ) {
+
+        const items =
+          Array.isArray(
+            combo.items
+          )
+            ? combo.items
+            : [];
+
+
+        const includes =
+          items
+            .map(
+              item => {
+
+                if (
+                  item.mode ===
+                  "category"
+                ) {
+
+                  return (
+                    Number(
+                      item.cantidad ||
+                      1
+                    ) +
+                    " × " +
+                    (
+                      item.label ||
+                      item.category
+                    )
+                  );
+                }
+
+
+                const product =
+                  item.productId &&
+                  typeof item.productId ===
+                    "object"
+                    ? item.productId
+                    : null;
+
+
+                return (
+                  Number(
+                    item.cantidad ||
+                    1
+                  ) +
+                  " × " +
+                  (
+                    product
+                      ? getProductName(
+                          product
+                        )
+                      : "Producto"
+                  )
+                );
+              }
+            )
+            .join(", ");
+
+
+        const tr =
+          document.createElement(
+            "tr"
+          );
+
+
+        tr.innerHTML = `
+          <td>
+            <strong>
+              ${escapeHtml(
+                combo.name
+              )}
+            </strong>
+
+            <small>
+              ${escapeHtml(
+                combo.description ||
+                ""
+              )}
+            </small>
+          </td>
+
+          <td>
+            ${escapeHtml(
+              includes
+            )}
+          </td>
+
+          <td>
+            <span class="price-old">
+              ${money(
+                combo.normalPrice ||
+                0
+              )}
+            </span>
+          </td>
+
+          <td>
+            <span class="price-new">
+              ${money(
+                combo.comboPrice ||
+                0
+              )}
+            </span>
+          </td>
+
+          <td>
+            <span
+              class="status ${
+                combo.active !== false
+                  ? "active"
+                  : "inactive"
+              }"
+            >
+              ${
+                combo.active !== false
+                  ? "Activo"
+                  : "Inactivo"
+              }
+            </span>
+          </td>
+
+          <td>
+            <div class="actions">
+
+              <button
+                class="edit-button"
+                type="button"
+                onclick="editCombo(
+                  '${escapeHtml(
+                    combo._id
+                  )}'
+                )"
+              >
+                Editar
+              </button>
+
+              <button
+                class="delete-button"
+                type="button"
+                onclick="deleteCombo(
+                  '${escapeHtml(
+                    combo._id
+                  )}'
+                )"
+              >
+                Eliminar
+              </button>
+
+            </div>
+          </td>
+        `;
+
+
+        body.appendChild(
+          tr
+        );
+      }
+    }
+
+
+    /* =========================
+       NUEVO COMBO
+    ========================= */
+
+    function openCreateModal() {
+
+      document
+        .getElementById(
+          "comboForm"
+        )
+        .reset();
+
+
+      document
+        .getElementById(
+          "comboId"
+        )
+        .value = "";
+
+
+      document
+        .getElementById(
+          "modalTitle"
+        )
+        .textContent =
+          "Nuevo combo";
+
+
+      document
+        .getElementById(
+          "comboItemList"
+        )
+        .innerHTML = "";
+
+
+      document
+        .getElementById(
+          "formMessage"
+        )
+        .textContent = "";
+
+
+      document
+        .getElementById(
+          "active"
+        )
+        .value = "true";
+
+
+      addComboItem();
+
+
+      updateSummary();
+
+
+      document
+        .getElementById(
+          "comboModal"
+        )
+        .classList.add(
+          "open"
+        );
+    }
+
+
+    /* =========================
+       EDITAR COMBO
+    ========================= */
+
+    function editCombo(id) {
+
+      const combo =
+        combos.find(
+          current =>
+            String(
+              current._id
+            ) ===
+            String(id)
+        );
+
+
+      if (!combo) {
+        return;
+      }
+
+
+      document
+        .getElementById(
+          "comboForm"
+        )
+        .reset();
+
+
+      document
+        .getElementById(
+          "comboId"
+        )
+        .value =
+          combo._id;
+
+
+      document
+        .getElementById(
+          "modalTitle"
+        )
+        .textContent =
+          "Editar combo";
+
+
+      document
+        .getElementById(
+          "name"
+        )
+        .value =
+          combo.name ||
+          "";
+
+
+      document
+        .getElementById(
+          "comboPrice"
+        )
+        .value =
+          combo.comboPrice ||
+          0;
+
+
+      document
+        .getElementById(
+          "active"
+        )
+        .value =
+          combo.active === false
+            ? "false"
+            : "true";
+
+
+      document
+        .getElementById(
+          "imageUrl"
+        )
+        .value =
+          combo.imageUrl ||
+          "";
+
+
+      document
+        .getElementById(
+          "description"
+        )
+        .value =
+          combo.description ||
+          "";
+
+
+      document
+        .getElementById(
+          "formMessage"
+        )
+        .textContent = "";
+
+
+      const list =
+        document.getElementById(
+          "comboItemList"
+        );
+
+
+      list.innerHTML = "";
+
+
+      const items =
+        Array.isArray(
+          combo.items
+        )
+          ? combo.items
+          : [];
+
+
+      if (!items.length) {
+
+        addComboItem();
+
+      } else {
+
+        for (
+          const item
+          of items
+        ) {
+
+          addComboItem(
+            item
+          );
+        }
+      }
+
+
+      updateSummary();
+
+
+      document
+        .getElementById(
+          "comboModal"
+        )
+        .classList.add(
+          "open"
+        );
+    }
+
+
+    /* =========================
+       CERRAR MODAL
+    ========================= */
+
+    function closeModal() {
+
+      document
+        .getElementById(
+          "comboModal"
+        )
+        .classList.remove(
+          "open"
+        );
+    }
+
+
+    /* =========================
+       GUARDAR COMBO
+    ========================= */
+
+    document
+      .getElementById(
+        "comboForm"
+      )
+      .addEventListener(
+        "submit",
+        async event => {
+
+          event.preventDefault();
+
+
+          const message =
+            document.getElementById(
+              "formMessage"
+            );
+
+
+          const saveButton =
+            document.getElementById(
+              "saveButton"
+            );
+
+
+          message.textContent = "";
+
+
+          const id =
+            document
+              .getElementById(
+                "comboId"
+              )
+              .value;
+
+
+          const items =
+            getFormItems();
+
+
+          if (!items.length) {
+
+            message.textContent =
+              "Agrega al menos un producto o categoría.";
+
+            return;
+          }
+
+
+          const payload = {
+
+            name:
+              document
+                .getElementById(
+                  "name"
+                )
+                .value
+                .trim(),
+
+            comboPrice:
+              Number(
+                document
+                  .getElementById(
+                    "comboPrice"
+                  )
+                  .value
+              ),
+
+            active:
+              document
+                .getElementById(
+                  "active"
+                )
+                .value ===
+              "true",
+
+            imageUrl:
+              document
+                .getElementById(
+                  "imageUrl"
+                )
+                .value
+                .trim(),
+
+            description:
+              document
+                .getElementById(
+                  "description"
+                )
+                .value
+                .trim(),
+
+            items,
+          };
+
+
+          if (!payload.name) {
+
+            message.textContent =
+              "Escribe el nombre del combo.";
+
+            return;
+          }
+
+
+          if (
+            !Number.isFinite(
+              payload.comboPrice
+            ) ||
+            payload.comboPrice < 0
+          ) {
+
+            message.textContent =
+              "Escribe un precio válido.";
+
+            return;
+          }
+
+
+          try {
+
+            saveButton.disabled =
+              true;
+
+            saveButton.textContent =
+              "Guardando...";
+
+
+            if (id) {
+
+              await request(
+                `${combosApiUrl}/${id}`,
+                {
+                  method:
+                    "PUT",
+
+                  body:
+                    JSON.stringify(
+                      payload
+                    ),
+                }
+              );
+
+            } else {
+
+              await request(
+                combosApiUrl,
+                {
+                  method:
+                    "POST",
+
+                  body:
+                    JSON.stringify(
+                      payload
+                    ),
+                }
+              );
+            }
+
+
+            closeModal();
+
+
+            await loadCombos();
+
+
+          } catch (error) {
+
+            console.error(
+              error
+            );
+
+
+            message.textContent =
+              error.message;
+
+
+          } finally {
+
+            saveButton.disabled =
+              false;
+
+            saveButton.textContent =
+              "Guardar combo";
+          }
+        }
+      );
+
+
+    /* =========================
+       ELIMINAR COMBO
+    ========================= */
+
+    async function deleteCombo(id) {
+
+      const combo =
+        combos.find(
+          current =>
+            String(
+              current._id
+            ) ===
+            String(id)
+        );
+
+
+      if (!combo) {
+        return;
+      }
+
+
+      const confirmed =
+        window.confirm(
+          `¿Eliminar el combo "${combo.name}"?`
+        );
+
+
+      if (!confirmed) {
+        return;
+      }
+
+
+      try {
+
+        await request(
+          `${combosApiUrl}/${id}`,
+          {
+            method:
+              "DELETE",
+          }
+        );
+
+
+        await loadCombos();
+
+
+      } catch (error) {
+
+        window.alert(
+          error.message
+        );
+      }
+    }
+
+
+    /* =========================
+       LOGOUT
+    ========================= */
+
+    async function logout() {
+
+      try {
+
+        await fetch(
+          "/admin/logout",
+          {
+            method:
+              "POST",
+
+            credentials:
+              "same-origin",
+          }
+        );
+
+      } catch (_error) {}
+
+      window.location.href =
+        "/admin/login";
+    }
+
+
+    /* =========================
+       CERRAR AL TOCAR FONDO
+    ========================= */
+
+    document
+      .getElementById(
+        "comboModal"
+      )
+      .addEventListener(
+        "click",
+        event => {
+
+          if (
+            event.target.id ===
+            "comboModal"
+          ) {
+            closeModal();
+          }
+        }
+      );
+
+
+    /* =========================
+       INICIAR
+    ========================= */
+
+    async function init() {
+
+      try {
+
+        await Promise.all([
+          loadProducts(),
+          loadCategories(),
+        ]);
+
+
+        await loadCombos();
+
+
+      } catch (error) {
+
+        console.error(
+          "Error iniciando administrador de combos:",
+          error
+        );
+      }
+    }
+
+
+    init();
+
+  </script>
+
+</body>
+</html>
