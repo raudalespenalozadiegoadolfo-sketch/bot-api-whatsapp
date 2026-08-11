@@ -1144,6 +1144,20 @@
       card.className =
         "combo-item-card";
 
+        card._excludedProductIds =
+  Array.isArray(
+    data.excludedProductIds
+  )
+    ? data.excludedProductIds.map(
+        id =>
+          String(
+            id?._id ||
+            id ||
+            ""
+          )
+      )
+    : [];
+
 
       card.innerHTML = `
         <div class="combo-item-grid">
@@ -1429,16 +1443,23 @@
 
 
       categorySelect.addEventListener(
-        "change",
-        () => {
+  "change",
+  () => {
 
-          updateCategoryPreview(
-            card
-          );
+    /*
+     * Al cambiar de categoría
+     * comenzamos con todos
+     * los productos incluidos.
+     */
+    card._excludedProductIds = [];
 
-          updateSummary();
-        }
-      );
+    updateCategoryPreview(
+      card
+    );
+
+    updateSummary();
+  }
+);
 
 
       updateCategoryPreview(
@@ -1451,74 +1472,147 @@
        PREVISUALIZAR CATEGORÍA
     ========================= */
 
-    function updateCategoryPreview(
-      card
-    ) {
+    /* =========================
+   OPCIONES DE CATEGORÍA
+========================= */
 
-      const select =
-        card.querySelector(
-          ".combo-item-category"
-        );
+function updateCategoryPreview(
+  card
+) {
 
+  const select =
+    card.querySelector(
+      ".combo-item-category"
+    );
 
-      const preview =
-        card.querySelector(
-          ".category-preview"
-        );
+  const preview =
+    card.querySelector(
+      ".category-preview"
+    );
 
+  if (
+    !select ||
+    !preview
+  ) {
+    return;
+  }
 
-      if (
-        !select ||
-        !preview
-      ) {
-        return;
-      }
+  const category =
+    select.value;
 
+  if (!category) {
 
-      const category =
-        select.value;
+    preview.innerHTML =
+      "Selecciona una categoría.";
 
+    return;
+  }
 
-      if (!category) {
+  const matching =
+    products
+      .filter(
+        product =>
+          product.active !== false &&
+          getProductCategory(
+            product
+          ).toLowerCase() ===
+          category.toLowerCase()
+      )
+      .sort(
+        (a, b) =>
+          getProductName(a)
+            .localeCompare(
+              getProductName(b),
+              "es"
+            )
+      );
 
-        preview.textContent =
-          "Selecciona una categoría.";
+  if (!matching.length) {
 
-        return;
-      }
+    preview.innerHTML =
+      "No hay productos activos en esta categoría.";
 
+    return;
+  }
 
-      const matching =
-        products.filter(
-          product =>
-            product.active !== false &&
-            getProductCategory(
+  const excluded =
+    new Set(
+      (
+        card._excludedProductIds ||
+        []
+      ).map(
+        id =>
+          String(id)
+      )
+    );
+
+  preview.innerHTML = `
+    <div
+      style="
+        display:grid;
+        gap:10px;
+        margin-top:6px;
+      "
+    >
+
+      ${matching
+        .map(product => {
+
+          const id =
+            getProductId(
               product
-            ).toLowerCase() ===
-            category.toLowerCase()
-        );
+            );
 
+          const included =
+            !excluded.has(
+              id
+            );
 
-      if (!matching.length) {
+          return `
+            <label
+              style="
+                display:flex;
+                align-items:center;
+                gap:10px;
+                padding:10px 12px;
+                background:#fff;
+                border:1px solid #e5e7eb;
+                border-radius:12px;
+                cursor:pointer;
+              "
+            >
 
-        preview.textContent =
-          "No hay productos activos en esta categoría.";
+              <input
+                type="checkbox"
+                class="category-product-checkbox"
+                data-product-id="${escapeHtml(id)}"
+                ${included ? "checked" : ""}
+                style="
+                  width:18px;
+                  height:18px;
+                  flex:0 0 auto;
+                "
+              >
 
-        return;
-      }
-
-
-      preview.innerHTML =
-        matching
-          .map(
-            product => `
-              <div>
-                • ${escapeHtml(
+              <span
+                style="
+                  flex:1;
+                  color:#111827;
+                  font-weight:700;
+                "
+              >
+                ${escapeHtml(
                   getProductName(
                     product
                   )
                 )}
-                —
+              </span>
+
+              <strong
+                style="
+                  white-space:nowrap;
+                "
+              >
                 ${escapeHtml(
                   money(
                     getProductPrice(
@@ -1526,202 +1620,291 @@
                     )
                   )
                 )}
-              </div>
-            `
-          )
-          .join("");
+              </strong>
+
+            </label>
+          `;
+        })
+        .join("")}
+
+    </div>
+  `;
+
+  /*
+   * Guardar exclusiones cada vez
+   * que se marca/desmarca.
+   */
+  const checkboxes =
+    preview.querySelectorAll(
+      ".category-product-checkbox"
+    );
+
+  checkboxes.forEach(
+    checkbox => {
+
+      checkbox.addEventListener(
+        "change",
+        () => {
+
+          const excludedIds =
+            [];
+
+          checkboxes.forEach(
+            current => {
+
+              if (
+                !current.checked
+              ) {
+                excludedIds.push(
+                  current.dataset
+                    .productId
+                );
+              }
+
+            }
+          );
+
+          card._excludedProductIds =
+            excludedIds;
+
+          updateSummary();
+        }
+      );
+
     }
+  );
+}
+
+
 
 
     /* =========================
        LEER ITEMS DEL FORMULARIO
     ========================= */
 
-    function getFormItems() {
+    /* =========================
+   LEER ITEMS DEL FORMULARIO
+========================= */
+    
+function getFormItems() {
 
-      const cards =
-        document.querySelectorAll(
-          ".combo-item-card"
-        );
+  const cards =
+    document.querySelectorAll(
+      ".combo-item-card"
+    );
 
+  const items = [];
 
-      const items = [];
+  for (
+    const card
+    of cards
+  ) {
 
+    const mode =
+      card
+        .querySelector(
+          ".combo-item-mode"
+        )
+        .value;
 
-      for (
-        const card
-        of cards
-      ) {
-
-        const mode =
-          card
-            .querySelector(
-              ".combo-item-mode"
-            )
-            .value;
-
-
-        const cantidad =
-          Math.min(
-            Math.max(
-              Number(
-                card
-                  .querySelector(
-                    ".combo-item-quantity"
-                  )
-                  .value ||
-                1
-              ),
-              1
-            ),
-            20
-          );
-
-
-        const label =
-          card
-            .querySelector(
-              ".combo-item-label"
-            )
-            ?.value
-            ?.trim() ||
-          "";
-
-
-        if (
-          mode ===
-          "product"
-        ) {
-
-          const productId =
+    const cantidad =
+      Math.min(
+        Math.max(
+          Number(
             card
               .querySelector(
-                ".combo-item-product"
+                ".combo-item-quantity"
               )
-              ?.value ||
-            "";
+              .value ||
+            1
+          ),
+          1
+        ),
+        20
+      );
 
+    const label =
+      card
+        .querySelector(
+          ".combo-item-label"
+        )
+        ?.value
+        ?.trim() ||
+      "";
 
-          if (!productId) {
-            continue;
-          }
+    /* =====================
+       PRODUCTO ESPECÍFICO
+    ===================== */
 
+    if (
+      mode ===
+      "product"
+    ) {
 
-          items.push({
-            mode:
-              "product",
+      const productId =
+        card
+          .querySelector(
+            ".combo-item-product"
+          )
+          ?.value ||
+        "";
 
-            productId,
-
-            category:
-              "",
-
-            label,
-
-            cantidad,
-          });
-
-
-          continue;
-        }
-
-
-        const category =
-          card
-            .querySelector(
-              ".combo-item-category"
-            )
-            ?.value ||
-          "";
-
-
-        if (!category) {
-          continue;
-        }
-
-
-        items.push({
-          mode:
-            "category",
-
-          productId:
-            null,
-
-          category,
-
-          label,
-
-          cantidad,
-        });
+      if (!productId) {
+        continue;
       }
 
+      items.push({
+        mode:
+          "product",
 
-      return items;
+        productId,
+
+        category:
+          "",
+
+        excludedProductIds:
+          [],
+
+        label,
+
+        cantidad,
+      });
+
+      continue;
     }
+
+    /* =====================
+       CATEGORÍA
+    ===================== */
+
+    const category =
+      card
+        .querySelector(
+          ".combo-item-category"
+        )
+        ?.value ||
+      "";
+
+    if (!category) {
+      continue;
+    }
+
+    const excludedProductIds =
+      Array.isArray(
+        card._excludedProductIds
+      )
+        ? card
+            ._excludedProductIds
+            .map(
+              id =>
+                String(id)
+            )
+            .filter(Boolean)
+        : [];
+
+    items.push({
+      mode:
+        "category",
+
+      productId:
+        null,
+
+      category,
+
+      excludedProductIds,
+
+      label,
+
+      cantidad,
+    });
+  }
+
+  return items;
+}
 
 
     /* =========================
        PRECIO DE REFERENCIA
     ========================= */
-
+   
+    /* =========================
+   PRECIO DE REFERENCIA
+========================= */
     function getReferencePrice(
-      item
-    ) {
+  item
+) {
 
-      if (
-        item.mode ===
-        "product"
-      ) {
+  if (
+    item.mode ===
+    "product"
+  ) {
 
-        const product =
-          products.find(
-            current =>
-              getProductId(
-                current
-              ) ===
-              String(
-                item.productId
-              )
+    const product =
+      products.find(
+        current =>
+          getProductId(
+            current
+          ) ===
+          String(
+            item.productId
+          )
+      );
+
+    return product
+      ? getProductPrice(
+          product
+        )
+      : 0;
+  }
+
+  const excluded =
+    new Set(
+      (
+        item.excludedProductIds ||
+        []
+      ).map(
+        id =>
+          String(id)
+      )
+    );
+
+  const matching =
+    products.filter(
+      product => {
+
+        const id =
+          getProductId(
+            product
           );
 
+        return (
+          product.active !== false &&
 
-        return product
-          ? getProductPrice(
-              product
-            )
-          : 0;
-      }
+          getProductCategory(
+            product
+          ).toLowerCase() ===
+          String(
+            item.category
+          ).toLowerCase() &&
 
-
-      const matching =
-        products.filter(
-          product =>
-            product.active !== false &&
-            getProductCategory(
-              product
-            ).toLowerCase() ===
-            String(
-              item.category
-            ).toLowerCase()
+          !excluded.has(id)
         );
-
-
-      if (!matching.length) {
-        return 0;
       }
+    );
 
+  if (!matching.length) {
+    return 0;
+  }
 
-      return Math.min(
-        ...matching.map(
-          product =>
-            getProductPrice(
-              product
-            )
+  return Math.min(
+    ...matching.map(
+      product =>
+        getProductPrice(
+          product
         )
-      );
-    }
-
-
+    )
+  );
+}
     /* =========================
        RESUMEN DE PRECIOS
     ========================= */

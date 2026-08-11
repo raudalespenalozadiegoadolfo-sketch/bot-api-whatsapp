@@ -2,6 +2,7 @@ const path = require("path");
 
 const Cliente = require("../models/Cliente");
 const Producto = require("../models/Producto");
+const Combo = require("../models/Combo");
 
 const {
   products: legacyProducts,
@@ -25,10 +26,6 @@ const {
   sendButtons,
 } = require("../services/whatsappService");
 
-/* =========================
-   MOSTRAR TIENDA
-========================= */
-
 function showStore(_req, res) {
   return res.sendFile(
     path.join(
@@ -40,84 +37,35 @@ function showStore(_req, res) {
   );
 }
 
-/* =========================
-   PRODUCTO DE MONGODB
-========================= */
-
 function serializeDatabaseProduct(product) {
   return {
     id: String(product._id),
-
     name: product.name,
-
     category: product.category,
-
     price: Number(product.price),
-
-    type:
-      product.type === "drink"
-        ? "drink"
-        : "food",
-
-    description:
-      product.description || "",
-
-    imageUrl:
-      product.imageUrl || "",
-
-    aliases: Array.isArray(
-      product.aliases
-    )
-      ? product.aliases
-      : [],
-
-    active:
-      product.active !== false,
-
+    type: product.type === "drink" ? "drink" : "food",
+    description: product.description || "",
+    imageUrl: product.imageUrl || "",
+    aliases: Array.isArray(product.aliases) ? product.aliases : [],
+    active: product.active !== false,
     source: "mongodb",
   };
 }
 
-/* =========================
-   PRODUCTO ANTERIOR
-========================= */
-
 function serializeLegacyProduct(product) {
   return {
     id: String(product.id),
-
     name: product.name,
-
     category: product.category,
-
     price: Number(product.price),
-
-    type:
-      product.type === "drink"
-        ? "drink"
-        : "food",
-
-    description:
-      product.description || "",
-
-    imageUrl:
-      product.imageUrl || "",
-
-    aliases: Array.isArray(
-      product.aliases
-    )
-      ? product.aliases
-      : [],
-
+    type: product.type === "drink" ? "drink" : "food",
+    description: product.description || "",
+    imageUrl: product.imageUrl || "",
+    aliases: Array.isArray(product.aliases) ? product.aliases : [],
     active: true,
-
     source: "legacy",
   };
 }
-
-/* =========================
-   NORMALIZAR CLAVE
-========================= */
 
 function productKey(product) {
   return `${product.category}::${product.name}`
@@ -125,16 +73,16 @@ function productKey(product) {
     .toLowerCase();
 }
 
-/* =========================
-   CARGAR PRODUCTOS
-========================= */
+function normalizedText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
 
 async function loadAvailableProducts() {
   const databaseProducts =
     await Producto.find({
-      active: {
-        $ne: false,
-      },
+      active: { $ne: false },
     })
       .sort({
         category: 1,
@@ -142,11 +90,6 @@ async function loadAvailableProducts() {
         name: 1,
       })
       .lean();
-
-  console.log(
-    "📦 Productos activos en MongoDB:",
-    databaseProducts.length
-  );
 
   const productMap = new Map();
 
@@ -162,10 +105,6 @@ async function loadAvailableProducts() {
   databaseProducts
     .map(serializeDatabaseProduct)
     .forEach(product => {
-      /*
-       * Un producto de MongoDB reemplaza al producto
-       * anterior cuando coinciden nombre y categoría.
-       */
       productMap.set(
         productKey(product),
         product
@@ -177,9 +116,198 @@ async function loadAvailableProducts() {
   );
 }
 
-/* =========================
-   OBTENER MENÚ
-========================= */
+async function loadAvailableCombos(
+  availableProducts
+) {
+  const combos =
+    await Combo.find({
+      active: { $ne: false },
+    })
+      .sort({
+        order: 1,
+        name: 1,
+      })
+      .populate({
+        path: "items.productId",
+        select:
+          "name category price active imageUrl",
+      })
+      .lean();
+
+  const productById =
+    new Map(
+      availableProducts.map(
+        product => [
+          String(product.id),
+          product,
+        ]
+      )
+    );
+
+  const serialized = [];
+
+  for (const combo of combos) {
+    const resolvedItems = [];
+    let valid = true;
+
+    for (
+      let itemIndex = 0;
+      itemIndex < combo.items.length;
+      itemIndex += 1
+    ) {
+      const item =
+        combo.items[itemIndex];
+
+      if (
+        item.mode === "category"
+      ) {
+        const excluded =
+          new Set(
+            (
+              item.excludedProductIds ||
+              []
+            ).map(id =>
+              String(id)
+            )
+          );
+
+        const options =
+          availableProducts
+            .filter(product =>
+              normalizedText(
+                product.category
+              ) ===
+                normalizedText(
+                  item.category
+                ) &&
+              !excluded.has(
+                String(product.id)
+              )
+            )
+            .map(product => ({
+              id:
+                String(product.id),
+              name:
+                product.name,
+              price:
+                Number(
+                  product.price
+                ),
+              category:
+                product.category,
+            }));
+
+        if (!options.length) {
+          valid = false;
+          break;
+        }
+
+        resolvedItems.push({
+          itemIndex,
+          mode:
+            "category",
+          category:
+            item.category,
+          label:
+            item.label ||
+            `Elige ${item.category}`,
+          cantidad:
+            Number(
+              item.cantidad || 1
+            ),
+          options,
+        });
+
+        continue;
+      }
+
+      const populated =
+        item.productId &&
+        typeof item.productId ===
+          "object"
+          ? item.productId
+          : null;
+
+      const productId =
+        populated
+          ? String(
+              populated._id ||
+              populated.id
+            )
+          : String(
+              item.productId || ""
+            );
+
+      const product =
+        productById.get(
+          productId
+        );
+
+      if (!product) {
+        valid = false;
+        break;
+      }
+
+      resolvedItems.push({
+        itemIndex,
+        mode:
+          "product",
+        label:
+          item.label ||
+          product.name,
+        cantidad:
+          Number(
+            item.cantidad || 1
+          ),
+        product: {
+          id:
+            String(product.id),
+          name:
+            product.name,
+          price:
+            Number(
+              product.price
+            ),
+          category:
+            product.category,
+        },
+      });
+    }
+
+    if (!valid) {
+      continue;
+    }
+
+    serialized.push({
+      id:
+        String(combo._id),
+      name:
+        combo.name,
+      category:
+        "Combos",
+      price:
+        Number(
+          combo.comboPrice
+        ),
+      normalPrice:
+        Number(
+          combo.normalPrice || 0
+        ),
+      type:
+        "combo",
+      description:
+        combo.description || "",
+      imageUrl:
+        combo.imageUrl || "",
+      active:
+        combo.active !== false,
+      items:
+        resolvedItems,
+    });
+  }
+
+  return serialized;
+}
 
 async function getMenu(
   _req,
@@ -189,6 +317,11 @@ async function getMenu(
   try {
     const products =
       await loadAvailableProducts();
+
+    const combos =
+      await loadAvailableCombos(
+        products
+      );
 
     const categories = [
       ...new Set(
@@ -201,17 +334,29 @@ async function getMenu(
       ),
     ];
 
+    if (
+      combos.length &&
+      !categories.includes(
+        "Combos"
+      )
+    ) {
+      categories.unshift(
+        "Combos"
+      );
+    }
+
     res.set({
-  "Cache-Control":
-    "no-store, no-cache, must-revalidate, proxy-revalidate",
-  Pragma: "no-cache",
-  Expires: "0",
-});
+      "Cache-Control":
+        "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+    });
 
     return res.json({
       ok: true,
       categories,
       products,
+      combos,
     });
   } catch (error) {
     console.error(
@@ -225,9 +370,116 @@ async function getMenu(
   }
 }
 
-/* =========================
-   CREAR PEDIDO DESDE TIENDA
-========================= */
+function validateComboSelection(
+  combo,
+  selections = []
+) {
+  const selectionMap =
+    new Map(
+      (
+        Array.isArray(selections)
+          ? selections
+          : []
+      ).map(selection => [
+        Number(
+          selection.itemIndex
+        ),
+        Array.isArray(
+          selection.productIds
+        )
+          ? selection.productIds.map(
+              id => String(id)
+            )
+          : [],
+      ])
+    );
+
+  const chosenSummary = [];
+
+  for (const item of combo.items) {
+    if (
+      item.mode === "product"
+    ) {
+      chosenSummary.push(
+        `${item.cantidad}x ${item.product.name}`
+      );
+      continue;
+    }
+
+    const selectedIds =
+      selectionMap.get(
+        Number(item.itemIndex)
+      ) || [];
+
+    if (
+      selectedIds.length !==
+      Number(item.cantidad)
+    ) {
+      throw new Error(
+        `Debes completar "${item.label}".`
+      );
+    }
+
+    const allowed =
+      new Map(
+        item.options.map(
+          product => [
+            String(product.id),
+            product,
+          ]
+        )
+      );
+
+    const selectedNames = [];
+
+    for (
+      const selectedId
+      of selectedIds
+    ) {
+      const product =
+        allowed.get(
+          String(selectedId)
+        );
+
+      if (!product) {
+        throw new Error(
+          `Una opción elegida para "${item.label}" ya no está disponible.`
+        );
+      }
+
+      selectedNames.push(
+        product.name
+      );
+    }
+
+    const counts =
+      new Map();
+
+    selectedNames.forEach(
+      name => {
+        counts.set(
+          name,
+          (
+            counts.get(name) || 0
+          ) + 1
+        );
+      }
+    );
+
+    chosenSummary.push(
+      Array.from(
+        counts.entries()
+      )
+        .map(
+          ([name, count]) =>
+            `${count}x ${name}`
+        )
+        .join(", ")
+    );
+  }
+
+  return chosenSummary;
+}
 
 async function createStoreOrder(
   req,
@@ -267,22 +519,16 @@ async function createStoreOrder(
 
     const cliente =
       await Cliente.findOneAndUpdate(
-        {
-          numero,
-        },
+        { numero },
         {
           $setOnInsert: {
             numero,
           },
-
           $set: {
             ultimaActividad:
               new Date(),
-
             ...(nombre
-              ? {
-                  nombre,
-                }
+              ? { nombre }
               : {}),
           },
         },
@@ -292,10 +538,6 @@ async function createStoreOrder(
           setDefaultsOnInsert: true,
         }
       );
-
-    /* =========================
-       BLOQUEAR PEDIDO ACTIVO
-    ========================= */
 
     const activeStates = [
       "confirmado",
@@ -314,12 +556,13 @@ async function createStoreOrder(
       });
     }
 
-    /* =========================
-       PRODUCTOS DISPONIBLES
-    ========================= */
-
     const availableProducts =
       await loadAvailableProducts();
+
+    const availableCombos =
+      await loadAvailableCombos(
+        availableProducts
+      );
 
     const productById =
       new Map(
@@ -331,30 +574,25 @@ async function createStoreOrder(
         )
       );
 
-    /* =========================
-       LIMPIAR CARRITO ANTERIOR
-    ========================= */
+    const comboById =
+      new Map(
+        availableCombos.map(
+          combo => [
+            String(combo.id),
+            combo,
+          ]
+        )
+      );
 
     cliente.pedidos = [];
     cliente.estadoPedido =
       "sin_pedido";
-
     cliente.paso =
       "inicio";
-
     cliente.productoPendiente =
       null;
 
-    /* =========================
-       AGREGAR PRODUCTOS
-    ========================= */
-
     for (const item of items) {
-      const product =
-        productById.get(
-          String(item.id)
-        );
-
       const rawQuantity =
         Number(
           item.cantidad || 1
@@ -373,6 +611,78 @@ async function createStoreOrder(
             1
           ),
           20
+        );
+
+      if (
+        item.type === "combo"
+      ) {
+        const combo =
+          comboById.get(
+            String(
+              item.comboId ||
+              item.id
+            )
+          );
+
+        if (!combo) {
+          return res
+            .status(400)
+            .json({
+              error:
+                "Uno de los combos ya no está disponible.",
+            });
+        }
+
+        let summary;
+
+        try {
+          summary =
+            validateComboSelection(
+              combo,
+              item.selections
+            );
+        } catch (error) {
+          return res
+            .status(400)
+            .json({
+              error:
+                error.message,
+            });
+        }
+
+        const signature =
+          JSON.stringify(
+            item.selections || []
+          )
+            .replace(
+              /[^a-zA-Z0-9]/g,
+              ""
+            )
+            .slice(0, 80);
+
+        const comboAsProduct = {
+          id:
+            `combo:${combo.id}:${signature}`,
+          name:
+            `${combo.name} (${summary.join("; ")})`,
+          price:
+            Number(
+              combo.price
+            ),
+        };
+
+        addProduct(
+          cliente,
+          comboAsProduct,
+          quantity
+        );
+
+        continue;
+      }
+
+      const product =
+        productById.get(
+          String(item.id)
         );
 
       if (product) {
@@ -395,21 +705,14 @@ async function createStoreOrder(
 
     cliente.paso =
       "inicio";
-
     cliente.productoPendiente =
       null;
-
     cliente.pedidoOrigen =
       "tienda";
-
     cliente.ultimaActividad =
       new Date();
 
     await cliente.save();
-
-    /* =========================
-       ENVIAR A WHATSAPP
-    ========================= */
 
     try {
       await sendText(
@@ -448,7 +751,6 @@ async function createStoreOrder(
       return res.status(502).json({
         error:
           "El pedido se guardó, pero no se pudo enviar a WhatsApp.",
-
         detalle:
           sendError.response?.data ||
           sendError.message,
@@ -457,16 +759,12 @@ async function createStoreOrder(
 
     return res.json({
       ok: true,
-
       numero:
         cliente.numero,
-
       total:
         totalOf(cliente),
-
       pedidos:
         cliente.pedidos,
-
       mensaje:
         "Pedido enviado a WhatsApp. Revisa el chat para confirmar.",
     });

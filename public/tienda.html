@@ -485,6 +485,155 @@
       background: #991b1b;
     }
 
+
+    /* =========================
+       PERSONALIZAR COMBO
+    ========================= */
+
+    .combo-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.55);
+    }
+
+    .combo-modal.open {
+      display: grid;
+    }
+
+    .combo-modal-card {
+      width: min(620px, 100%);
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      border-radius: 26px;
+      background: #ffffff;
+      box-shadow: var(--shadow);
+    }
+
+    .combo-modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .combo-modal-head h3 {
+      font-size: 25px;
+      font-weight: 900;
+    }
+
+    .combo-modal-head p {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .combo-modal-close {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      border: 0;
+      border-radius: 14px;
+      background: var(--soft-gray);
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .combo-choice-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .combo-choice-block {
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fafafa;
+    }
+
+    .combo-choice-block strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .combo-choice-block select {
+      width: 100%;
+      margin-top: 8px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #ffffff;
+      font: inherit;
+      font-weight: 700;
+    }
+
+    .combo-fixed-item {
+      padding: 11px 12px;
+      border-radius: 14px;
+      background: #ffffff;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .combo-modal-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .combo-modal-actions button {
+      padding: 14px;
+      border-radius: 16px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .combo-cancel {
+      border: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .combo-confirm {
+      border: 0;
+      background: var(--orange);
+      color: #ffffff;
+    }
+
+    .combo-badge {
+      display: inline-flex;
+      margin-bottom: 8px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: #fff0e9;
+      color: #b43b0c;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .combo-normal-price {
+      margin-left: 7px;
+      color: var(--muted);
+      font-size: 13px;
+      text-decoration: line-through;
+    }
+
+    .combo-cart-summary {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
     @media (max-width: 700px) {
       header {
         align-items: flex-start;
@@ -614,6 +763,55 @@
     </div>
   </div>
 
+
+  <div
+    class="combo-modal"
+    id="comboModal"
+    onclick="handleComboModalClick(event)"
+  >
+    <div class="combo-modal-card">
+      <div class="combo-modal-head">
+        <div>
+          <h3 id="comboModalTitle">
+            Personaliza tu combo
+          </h3>
+          <p id="comboModalDescription"></p>
+        </div>
+
+        <button
+          class="combo-modal-close"
+          type="button"
+          onclick="closeComboModal()"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div
+        class="combo-choice-list"
+        id="comboChoiceList"
+      ></div>
+
+      <div class="combo-modal-actions">
+        <button
+          class="combo-cancel"
+          type="button"
+          onclick="closeComboModal()"
+        >
+          Cancelar
+        </button>
+
+        <button
+          class="combo-confirm"
+          type="button"
+          onclick="confirmComboCustomization()"
+        >
+          Agregar combo
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div
     class="toast"
     id="toast"
@@ -621,11 +819,13 @@
 
   <script>
     let menu = [];
+    let combos = [];
     let categories = [];
     let selectedCategory = "Todos";
     let quantities = {};
     let cart = {};
     let sendingOrder = false;
+    let customizingComboId = null;
 
     const CART_STORAGE_KEY =
       "marisco_alegre_cart";
@@ -638,14 +838,26 @@
         "es-MX"
       )}`;
 
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
     function toast(
       message,
       type = "ok"
     ) {
       const element =
-        document.getElementById("toast");
+        document.getElementById(
+          "toast"
+        );
 
-      element.textContent = message;
+      element.textContent =
+        message;
 
       element.className =
         `toast show ${
@@ -655,7 +867,9 @@
         }`;
 
       window.setTimeout(() => {
-        element.classList.remove("show");
+        element.classList.remove(
+          "show"
+        );
       }, 3000);
     }
 
@@ -749,11 +963,21 @@
     async function loadMenu() {
       try {
         const response =
-          await fetch("/api/menu");
+          await fetch(
+            `/api/menu?timestamp=${Date.now()}`,
+            {
+              method: "GET",
+              cache: "no-store",
+              headers: {
+                Accept:
+                  "application/json",
+              },
+            }
+          );
 
         if (!response.ok) {
           throw new Error(
-            "No se pudo cargar el menú."
+            `No se pudo cargar el menú. Código: ${response.status}`
           );
         }
 
@@ -761,27 +985,123 @@
           await response.json();
 
         menu =
-          Array.isArray(data.products)
+          Array.isArray(
+            data.products
+          )
             ? data.products
+                .filter(
+                  product =>
+                    product.active !==
+                    false
+                )
+                .map(product => ({
+                  ...product,
+                  id:
+                    String(
+                      product.id
+                    ),
+                  name:
+                    String(
+                      product.name ||
+                      ""
+                    ),
+                  category:
+                    String(
+                      product.category ||
+                      "Otros"
+                    ),
+                  price:
+                    Number(
+                      product.price ||
+                      0
+                    ),
+                  type:
+                    product.type ===
+                    "drink"
+                      ? "drink"
+                      : "food",
+                }))
             : [];
+
+        combos =
+          Array.isArray(
+            data.combos
+          )
+            ? data.combos
+                .filter(
+                  combo =>
+                    combo.active !==
+                    false
+                )
+                .map(combo => ({
+                  ...combo,
+                  id:
+                    String(
+                      combo.id
+                    ),
+                  price:
+                    Number(
+                      combo.price ||
+                      0
+                    ),
+                  normalPrice:
+                    Number(
+                      combo.normalPrice ||
+                      0
+                    ),
+                  type:
+                    "combo",
+                  category:
+                    "Combos",
+                }))
+            : [];
+
+        const baseCategories =
+          Array.isArray(
+            data.categories
+          )
+            ? data.categories
+            : menu.map(
+                product =>
+                  product.category
+              );
 
         categories = [
           "Todos",
-          ...(
-            Array.isArray(data.categories)
-              ? data.categories
-              : []
+          ...new Set(
+            baseCategories
+              .filter(Boolean)
           ),
         ];
+
+        if (
+          combos.length &&
+          !categories.includes(
+            "Combos"
+          )
+        ) {
+          categories.splice(
+            1,
+            0,
+            "Combos"
+          );
+        }
+
+        selectedCategory =
+          "Todos";
 
         renderFilters();
         renderProducts();
         renderCart();
       } catch (error) {
-        console.error(error);
+        console.error(
+          "❌ Error cargando el menú:",
+          error
+        );
 
         toast(
-          "No se pudo cargar el menú.",
+          error.message ||
+            "No se pudo cargar el menú.",
           "error"
         );
       }
@@ -809,7 +1129,9 @@
                   category
                 )})'
               >
-                ${category}
+                ${escapeHtml(
+                  category
+                )}
               </button>
             `
           )
@@ -819,7 +1141,8 @@
     function selectCategory(
       category
     ) {
-      selectedCategory = category;
+      selectedCategory =
+        category;
 
       renderFilters();
       renderProducts();
@@ -827,40 +1150,73 @@
 
     function emoji(product) {
       if (
-        product.type === "drink"
+        product.type ===
+        "combo"
+      ) {
+        return "🔥";
+      }
+
+      if (
+        product.type ===
+        "drink"
       ) {
         return "🥤";
       }
 
+      const category =
+        String(
+          product.category || ""
+        ).toLowerCase();
+
       if (
-        product.category ===
-        "Camarones"
+        category ===
+        "camarones"
       ) {
         return "🦐";
       }
 
       if (
-        product.category ===
-        "Pulpo"
+        category ===
+        "pulpo"
       ) {
         return "🐙";
       }
 
       if (
-        product.category ===
-        "Cortes"
+        category ===
+        "cortes"
       ) {
         return "🥩";
       }
 
       if (
-        product.category ===
-        "Aguachiles"
+        category ===
+        "aguachiles"
       ) {
         return "🌶️";
       }
 
       return "🍽️";
+    }
+
+    function getVisibleItems() {
+      const allItems = [
+        ...combos,
+        ...menu,
+      ];
+
+      if (
+        selectedCategory ===
+        "Todos"
+      ) {
+        return allItems;
+      }
+
+      return allItems.filter(
+        item =>
+          item.category ===
+          selectedCategory
+      );
     }
 
     function renderProducts() {
@@ -870,50 +1226,84 @@
         );
 
       const list =
-        selectedCategory === "Todos"
-          ? menu
-          : menu.filter(
-              product =>
-                product.category ===
-                selectedCategory
-            );
+        getVisibleItems();
 
       productsElement.innerHTML =
         list
-          .map(product => {
+          .map(item => {
             const quantity =
-              quantities[product.id] ||
+              quantities[item.id] ||
               1;
+
+            const isCombo =
+              item.type ===
+              "combo";
 
             return `
               <article class="product">
+
                 <div class="photo">
-                  ${emoji(product)}
+                  ${emoji(item)}
                 </div>
 
-                <h3>${product.name}</h3>
+                ${
+                  isCombo
+                    ? `
+                      <span class="combo-badge">
+                        COMBO
+                      </span>
+                    `
+                    : ""
+                }
 
-                <p>${product.category}</p>
+                <h3>
+                  ${escapeHtml(
+                    item.name
+                  )}
+                </h3>
+
+                <p>
+                  ${escapeHtml(
+                    item.description ||
+                    item.category
+                  )}
+                </p>
 
                 <div class="price">
-                  ${money(product.price)}
+                  ${money(
+                    item.price
+                  )}
+
+                  ${
+                    isCombo &&
+                    item.normalPrice >
+                      item.price
+                      ? `
+                        <span class="combo-normal-price">
+                          ${money(
+                            item.normalPrice
+                          )}
+                        </span>
+                      `
+                      : ""
+                  }
                 </div>
 
                 <div class="controls">
                   <button
                     type="button"
-                    onclick="decreaseProductQuantity('${product.id}')"
-                    aria-label="Disminuir"
+                    onclick="decreaseProductQuantity('${item.id}')"
                   >
                     −
                   </button>
 
-                  <span>${quantity}</span>
+                  <span>
+                    ${quantity}
+                  </span>
 
                   <button
                     type="button"
-                    onclick="increaseProductQuantity('${product.id}')"
-                    aria-label="Aumentar"
+                    onclick="increaseProductQuantity('${item.id}')"
                   >
                     +
                   </button>
@@ -922,10 +1312,19 @@
                 <button
                   type="button"
                   class="add"
-                  onclick="addToCart('${product.id}')"
+                  onclick="${
+                    isCombo
+                      ? `openComboCustomizer('${item.id}')`
+                      : `addToCart('${item.id}')`
+                  }"
                 >
-                  Agregar
+                  ${
+                    isCombo
+                      ? "Personalizar y agregar"
+                      : "Agregar"
+                  }
                 </button>
+
               </article>
             `;
           })
@@ -935,10 +1334,14 @@
     function increaseProductQuantity(
       id
     ) {
-      quantities[id] = Math.min(
-        (quantities[id] || 1) + 1,
-        20
-      );
+      quantities[id] =
+        Math.min(
+          (
+            quantities[id] ||
+            1
+          ) + 1,
+          20
+        );
 
       renderProducts();
     }
@@ -946,10 +1349,14 @@
     function decreaseProductQuantity(
       id
     ) {
-      quantities[id] = Math.max(
-        (quantities[id] || 1) - 1,
-        1
-      );
+      quantities[id] =
+        Math.max(
+          (
+            quantities[id] ||
+            1
+          ) - 1,
+          1
+        );
 
       renderProducts();
     }
@@ -957,7 +1364,8 @@
     function addToCart(id) {
       const product =
         menu.find(
-          item => item.id === id
+          item =>
+            item.id === id
         );
 
       if (!product) {
@@ -965,7 +1373,6 @@
           "Producto no encontrado.",
           "error"
         );
-
         return;
       }
 
@@ -975,6 +1382,8 @@
       if (!cart[id]) {
         cart[id] = {
           ...product,
+          itemType:
+            "product",
           cantidad: 0,
         };
       }
@@ -994,6 +1403,306 @@
 
       toast(
         `${product.name} agregado`
+      );
+    }
+
+    function openComboCustomizer(
+      id
+    ) {
+      const combo =
+        combos.find(
+          item =>
+            item.id === id
+        );
+
+      if (!combo) {
+        toast(
+          "Combo no encontrado.",
+          "error"
+        );
+        return;
+      }
+
+      customizingComboId =
+        id;
+
+      document.getElementById(
+        "comboModalTitle"
+      ).textContent =
+        combo.name;
+
+      document.getElementById(
+        "comboModalDescription"
+      ).textContent =
+        combo.description ||
+        "Selecciona las opciones de tu combo.";
+
+      const container =
+        document.getElementById(
+          "comboChoiceList"
+        );
+
+      container.innerHTML =
+        combo.items
+          .map(item => {
+            if (
+              item.mode ===
+              "product"
+            ) {
+              return `
+                <div class="combo-choice-block">
+                  <strong>
+                    ${escapeHtml(
+                      item.label ||
+                      item.product.name
+                    )}
+                  </strong>
+
+                  <div class="combo-fixed-item">
+                    ${Number(
+                      item.cantidad ||
+                      1
+                    )} ×
+                    ${escapeHtml(
+                      item.product.name
+                    )}
+                  </div>
+                </div>
+              `;
+            }
+
+            const selects = [];
+
+            for (
+              let slot = 0;
+              slot <
+              Number(
+                item.cantidad || 1
+              );
+              slot += 1
+            ) {
+              selects.push(`
+                <select
+                  class="combo-choice-select"
+                  data-item-index="${item.itemIndex}"
+                  data-slot="${slot}"
+                >
+                  <option value="">
+                    Elige una opción
+                  </option>
+
+                  ${item.options
+                    .map(
+                      option => `
+                        <option
+                          value="${escapeHtml(
+                            option.id
+                          )}"
+                        >
+                          ${escapeHtml(
+                            option.name
+                          )}
+                        </option>
+                      `
+                    )
+                    .join("")}
+                </select>
+              `);
+            }
+
+            return `
+              <div class="combo-choice-block">
+                <strong>
+                  ${escapeHtml(
+                    item.label ||
+                    item.category
+                  )}
+                </strong>
+
+                ${selects.join("")}
+              </div>
+            `;
+          })
+          .join("");
+
+      document
+        .getElementById(
+          "comboModal"
+        )
+        .classList.add(
+          "open"
+        );
+
+      document.body.style.overflow =
+        "hidden";
+    }
+
+    function closeComboModal() {
+      customizingComboId =
+        null;
+
+      document
+        .getElementById(
+          "comboModal"
+        )
+        .classList.remove(
+          "open"
+        );
+
+      document.body.style.overflow =
+        "";
+    }
+
+    function handleComboModalClick(
+      event
+    ) {
+      if (
+        event.target.id ===
+        "comboModal"
+      ) {
+        closeComboModal();
+      }
+    }
+
+    function confirmComboCustomization() {
+      const combo =
+        combos.find(
+          item =>
+            item.id ===
+            customizingComboId
+        );
+
+      if (!combo) {
+        return;
+      }
+
+      const selections = [];
+      const summary = [];
+
+      for (const item of combo.items) {
+        if (
+          item.mode ===
+          "product"
+        ) {
+          summary.push(
+            `${item.cantidad}x ${item.product.name}`
+          );
+          continue;
+        }
+
+        const selects =
+          Array.from(
+            document.querySelectorAll(
+              `.combo-choice-select[data-item-index="${item.itemIndex}"]`
+            )
+          );
+
+        const productIds =
+          selects.map(
+            select =>
+              select.value
+          );
+
+        if (
+          productIds.some(
+            id => !id
+          )
+        ) {
+          toast(
+            `Completa: ${item.label}`,
+            "error"
+          );
+          return;
+        }
+
+        selections.push({
+          itemIndex:
+            item.itemIndex,
+          productIds,
+        });
+
+        const optionById =
+          new Map(
+            item.options.map(
+              option => [
+                String(
+                  option.id
+                ),
+                option,
+              ]
+            )
+          );
+
+        const names =
+          productIds.map(
+            id =>
+              optionById.get(
+                String(id)
+              )?.name ||
+              "Opción"
+          );
+
+        const counts =
+          new Map();
+
+        names.forEach(name => {
+          counts.set(
+            name,
+            (
+              counts.get(name) || 0
+            ) + 1
+          );
+        });
+
+        summary.push(
+          Array.from(
+            counts.entries()
+          )
+            .map(
+              ([name, count]) =>
+                `${count}x ${name}`
+            )
+            .join(", ")
+        );
+      }
+
+      const quantity =
+        quantities[combo.id] ||
+        1;
+
+      const cartKey =
+        `combo:${combo.id}:${Date.now()}:${Math.random()
+          .toString(36)
+          .slice(2, 8)}`;
+
+      cart[cartKey] = {
+        id:
+          cartKey,
+        itemType:
+          "combo",
+        comboId:
+          combo.id,
+        name:
+          combo.name,
+        price:
+          combo.price,
+        cantidad:
+          quantity,
+        selections,
+        summary:
+          summary.join("; "),
+      };
+
+      quantities[combo.id] =
+        1;
+
+      saveCart();
+      renderProducts();
+      renderCart();
+      closeComboModal();
+
+      toast(
+        `${combo.name} agregado`
       );
     }
 
@@ -1024,7 +1733,10 @@
       cartCount.textContent =
         items.reduce(
           (sum, item) =>
-            sum + item.cantidad,
+            sum +
+            Number(
+              item.cantidad || 0
+            ),
           0
         );
 
@@ -1035,8 +1747,11 @@
           </div>
         `;
 
-        cartToolbar.innerHTML = "";
-        cartTotal.textContent = "$0";
+        cartToolbar.innerHTML =
+          "";
+
+        cartTotal.textContent =
+          "$0";
 
         return;
       }
@@ -1049,19 +1764,41 @@
                 <div class="cart-product-head">
                   <div class="cart-product-info">
                     <strong>
-                      ${item.name}
+                      ${escapeHtml(
+                        item.name
+                      )}
                     </strong>
 
                     <small>
-                      ${money(item.price)}
+                      ${money(
+                        item.price
+                      )}
                       por unidad
                     </small>
+
+                    ${
+                      item.itemType ===
+                        "combo" &&
+                      item.summary
+                        ? `
+                          <div class="combo-cart-summary">
+                            ${escapeHtml(
+                              item.summary
+                            )}
+                          </div>
+                        `
+                        : ""
+                    }
                   </div>
 
                   <div class="cart-subtotal">
                     ${money(
-                      item.price *
+                      Number(
+                        item.price
+                      ) *
+                      Number(
                         item.cantidad
+                      )
                     )}
                   </div>
                 </div>
@@ -1070,8 +1807,9 @@
                   <div class="cart-edit-controls">
                     <button
                       type="button"
-                      onclick="decreaseCartItem('${item.id}')"
-                      aria-label="Disminuir cantidad"
+                      onclick="decreaseCartItem('${escapeHtml(
+                        item.id
+                      )}')"
                     >
                       −
                     </button>
@@ -1082,8 +1820,9 @@
 
                     <button
                       type="button"
-                      onclick="increaseCartItem('${item.id}')"
-                      aria-label="Aumentar cantidad"
+                      onclick="increaseCartItem('${escapeHtml(
+                        item.id
+                      )}')"
                     >
                       +
                     </button>
@@ -1092,7 +1831,9 @@
                   <button
                     type="button"
                     class="remove-cart-item"
-                    onclick="removeCartItem('${item.id}')"
+                    onclick="removeCartItem('${escapeHtml(
+                      item.id
+                    )}')"
                   >
                     🗑 Eliminar
                   </button>
@@ -1117,8 +1858,12 @@
           items.reduce(
             (sum, item) =>
               sum +
-              item.price *
-                item.cantidad,
+              Number(
+                item.price
+              ) *
+              Number(
+                item.cantidad
+              ),
             0
           )
         );
@@ -1134,7 +1879,9 @@
 
       cart[id].cantidad =
         Math.min(
-          cart[id].cantidad + 1,
+          Number(
+            cart[id].cantidad
+          ) + 1,
           20
         );
 
@@ -1151,7 +1898,9 @@
       }
 
       if (
-        cart[id].cantidad <= 1
+        Number(
+          cart[id].cantidad
+        ) <= 1
       ) {
         delete cart[id];
 
@@ -1209,8 +1958,12 @@
 
     function openCart() {
       document
-        .getElementById("drawer")
-        .classList.add("open");
+        .getElementById(
+          "drawer"
+        )
+        .classList.add(
+          "open"
+        );
 
       document.body.style.overflow =
         "hidden";
@@ -1220,8 +1973,12 @@
 
     function closeCart() {
       document
-        .getElementById("drawer")
-        .classList.remove("open");
+        .getElementById(
+          "drawer"
+        )
+        .classList.remove(
+          "open"
+        );
 
       document.body.style.overflow =
         "";
@@ -1246,7 +2003,8 @@
       if (
         phone.length === 10
       ) {
-        phone = `521${phone}`;
+        phone =
+          `521${phone}`;
       }
 
       return phone;
@@ -1273,20 +2031,43 @@
           .trim();
 
       const items =
-        Object.values(cart).map(
-          item => ({
-            id: item.id,
+        Object.values(
+          cart
+        ).map(item => {
+          if (
+            item.itemType ===
+            "combo"
+          ) {
+            return {
+              type:
+                "combo",
+              id:
+                item.comboId,
+              comboId:
+                item.comboId,
+              cantidad:
+                item.cantidad,
+              selections:
+                item.selections ||
+                [],
+            };
+          }
+
+          return {
+            type:
+              "product",
+            id:
+              item.id,
             cantidad:
               item.cantidad,
-          })
-        );
+          };
+        });
 
       if (!items.length) {
         toast(
           "Agrega productos primero.",
           "error"
         );
-
         return;
       }
 
@@ -1295,7 +2076,6 @@
           "Escribe tu número de WhatsApp.",
           "error"
         );
-
         return;
       }
 
@@ -1307,7 +2087,6 @@
           "Revisa el número de WhatsApp y la lada.",
           "error"
         );
-
         return;
       }
 
@@ -1316,7 +2095,6 @@
           "Escribe tu nombre.",
           "error"
         );
-
         return;
       }
 
@@ -1327,7 +2105,9 @@
 
       sendingOrder = true;
 
-      confirmButton.disabled = true;
+      confirmButton.disabled =
+        true;
+
       confirmButton.textContent =
         "Enviando pedido...";
 
@@ -1343,11 +2123,12 @@
                 "Content-Type":
                   "application/json",
               },
-              body: JSON.stringify({
-                numero,
-                nombre,
-                items,
-              }),
+              body:
+                JSON.stringify({
+                  numero,
+                  nombre,
+                  items,
+                }),
             }
           );
 
