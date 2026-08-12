@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "check": "node --check server.js"
+    "check": "node --check server.js",
+    "test": "node --test --test-concurrency=1",
+    "test:watch": "node --test --test-concurrency=1 --watch"
   },
   "engines": {
     "node": ">=20"
