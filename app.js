@@ -63,12 +63,19 @@ const {
   "./middleware/requireAdmin"
 );
 
+const {
+  csrfProtection,
+  securityHeaders,
+} = require("./middleware/security");
+
 /* =========================
    APP
 ========================= */
 
 function createApp(options = {}) {
   const app = express();
+
+app.use(securityHeaders);
 
 const isProduction =
   process.env.NODE_ENV ===
@@ -191,6 +198,8 @@ app.use(
       "256kb",
   })
 );
+
+app.use(csrfProtection);
 
 /* =========================
    PÁGINAS ADMINISTRATIVAS
@@ -510,10 +519,27 @@ app.use(
 app.use(
   (
     error,
-    _req,
+    req,
     res,
     _next
   ) => {
+    if (
+      error.status === 413 ||
+      error.type === "entity.too.large"
+    ) {
+      console.warn(
+        "Solicitud demasiado grande:",
+        req.method,
+        req.originalUrl
+      );
+
+      return res.status(413).json({
+        ok: false,
+        error:
+          "La solicitud excede el tamaño permitido.",
+      });
+    }
+
     console.error(
       "❌ Error del servidor:",
       error.response?.data ||

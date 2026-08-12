@@ -125,6 +125,17 @@ function cookieFrom(response) {
   return response.headers.get("set-cookie")?.split(";", 1)[0] || "";
 }
 
+async function login(baseUrl, cookie = "", password = "password-test") {
+  return fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(cookie ? { cookie } : {}),
+    },
+    body: JSON.stringify({ usuario: "admin", password }),
+  });
+}
+
 test("aplicación Express atiende rutas públicas y webhook real", async t => {
   const fixture = await startTestApp();
   t.after(() => fixture.close());
@@ -167,8 +178,24 @@ test("panel y sus APIs exigen sesión administrativa aunque PANEL_API_KEY esté 
   assert.equal(login.status, 200);
   const cookie = cookieFrom(login);
   assert.ok(cookie);
+  const setCookie = login.headers.get("set-cookie");
+  assert.match(setCookie, /HttpOnly/i);
+  assert.match(setCookie, /SameSite=Lax/i);
+  const expires = setCookie.match(/Expires=([^;]+)/i);
+  assert.ok(expires);
+  const cookieLifetime =
+    new Date(expires[1]).getTime() -
+    new Date(login.headers.get("date")).getTime();
+  assert.ok(cookieLifetime >= 43190 * 1000);
+  assert.ok(cookieLifetime <= 43210 * 1000);
   assert.equal((await fetch(`${fixture.baseUrl}/panel`, { headers: { cookie } })).status, 200);
   assert.equal((await fetch(`${fixture.baseUrl}/api/pedidos`, { headers: { cookie } })).status, 200);
+  const csrfResponse = await fetch(
+    `${fixture.baseUrl}/api/auth/csrf`,
+    { headers: { cookie } }
+  );
+  const { csrfToken } =
+    await csrfResponse.json();
   const stateChange = await fetch(
     `${fixture.baseUrl}/api/pedido/cocina`,
     {
@@ -176,6 +203,7 @@ test("panel y sus APIs exigen sesión administrativa aunque PANEL_API_KEY esté 
       headers: {
         cookie,
         "content-type": "application/json",
+        "x-csrf-token": csrfToken,
       },
       body: JSON.stringify({
         numero: fixture.cliente.numero,
@@ -219,4 +247,94 @@ test("JSON público mayor a 1 MB es rechazado", async t => {
     body: JSON.stringify({ numero: "5512345678", padding: "x".repeat(1024 * 1024 + 1), items: [] }),
   });
   assert.equal(response.status, 413);
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    error: "La solicitud excede el tamaño permitido.",
+  });
+});
+
+test("login limita intentos fallidos sin bloquear una sesión autenticada", async t => {
+  const fixture = await startTestApp();
+  t.after(() => fixture.close());
+  const authenticated = await login(fixture.baseUrl);
+  const authenticatedCookie = cookieFrom(authenticated);
+  const authenticatedStatuses = [];
+  for (let index = 0; index < 6; index += 1) {
+    authenticatedStatuses.push(
+      (await login(fixture.baseUrl, authenticatedCookie, "incorrecta")).status
+    );
+  }
+  assert.deepEqual(authenticatedStatuses, [401, 401, 401, 401, 401, 401]);
+
+  const statuses = [];
+  for (let index = 0; index < 6; index += 1) {
+    statuses.push((await login(fixture.baseUrl, "", "incorrecta")).status);
+  }
+  assert.deepEqual(statuses.slice(0, 5), [401, 401, 401, 401, 401]);
+  assert.equal(statuses[5], 429);
+});
+
+test("login regenera la sesión y deja inválido el identificador anterior", async t => {
+  const fixture = await startTestApp();
+  t.after(() => fixture.close());
+  const seed = await fetch(`${fixture.baseUrl}/api/auth/csrf`);
+  const oldCookie = cookieFrom(seed);
+  assert.ok(oldCookie);
+  const authenticated = await login(fixture.baseUrl, oldCookie);
+  const newCookie = cookieFrom(authenticated);
+  assert.equal(authenticated.status, 200);
+  assert.ok(newCookie);
+  assert.notEqual(newCookie, oldCookie);
+  assert.equal((await fetch(`${fixture.baseUrl}/api/auth/me`, { headers: { cookie: oldCookie } })).status, 401);
+  assert.equal((await fetch(`${fixture.baseUrl}/api/auth/me`, { headers: { cookie: newCookie } })).status, 200);
+});
+
+test("CSRF exige token válido para mutaciones administrativas por sesión", async t => {
+  const fixture = await startTestApp();
+  t.after(() => fixture.close());
+  const authenticated = await login(fixture.baseUrl);
+  const cookie = cookieFrom(authenticated);
+  const tokenResponse = await fetch(`${fixture.baseUrl}/api/auth/csrf`, { headers: { cookie } });
+  assert.equal(tokenResponse.status, 200);
+  const { csrfToken } = await tokenResponse.json();
+  assert.match(csrfToken, /^[a-f0-9]{64}$/);
+  const request = token => fetch(`${fixture.baseUrl}/api/pedido/cocina`, {
+    method: "POST",
+    headers: {
+      cookie,
+      "content-type": "application/json",
+      ...(token === undefined ? {} : { "x-csrf-token": token }),
+    },
+    body: JSON.stringify({ numero: fixture.cliente.numero }),
+  });
+  assert.equal((await request()).status, 403);
+  assert.equal((await request("incorrecto")).status, 403);
+  assert.equal((await request(csrfToken)).status, 200);
+});
+
+test("PANEL_API_KEY configurada autoriza API sin sesión y sin CSRF", async t => {
+  const original = testEnv.PANEL_API_KEY;
+  testEnv.PANEL_API_KEY = "panel-key-test";
+  const fixture = await startTestApp();
+  t.after(async () => {
+    testEnv.PANEL_API_KEY = original;
+    await fixture.close();
+  });
+  const response = await fetch(`${fixture.baseUrl}/api/pedido/cocina`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": "panel-key-test" },
+    body: JSON.stringify({ numero: fixture.cliente.numero }),
+  });
+  assert.equal(response.status, 200);
+});
+
+test("respuestas incluyen headers de seguridad compatibles", async t => {
+  const fixture = await startTestApp();
+  t.after(() => fixture.close());
+  const response = await fetch(`${fixture.baseUrl}/tienda`);
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(response.headers.get("x-frame-options"), "DENY");
+  assert.equal(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin");
+  assert.match(response.headers.get("content-security-policy"), /default-src 'self'/);
+  assert.ok(response.headers.get("permissions-policy"));
 });

@@ -678,26 +678,40 @@
     let dashboard = {};
     let cancelNumber = "";
 
-    const API_KEY = localStorage.getItem("panel_api_key") || "";
+    let csrfToken = "";
+
+    async function getCsrfToken() {
+      if (csrfToken) return csrfToken;
+      const response = await fetch("/api/auth/csrf", {
+        credentials: "same-origin",
+      });
+      if (!response.ok) throw new Error("No se pudo iniciar la sesión segura.");
+      const data = await response.json();
+      csrfToken = data.csrfToken;
+      return csrfToken;
+    }
 
     function headers() {
       const h = { "Content-Type": "application/json" };
-      if (API_KEY) h["x-api-key"] = API_KEY;
       return h;
     }
 
     async function api(url, options = {}) {
+      const method = String(options.method || "GET").toUpperCase();
+      const mutable = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+      const token = mutable ? await getCsrfToken() : "";
       const res = await fetch(url, {
         ...options,
-        headers: { ...headers(), ...(options.headers || {}) }
+        credentials: "same-origin",
+        headers: {
+          ...headers(),
+          ...(options.headers || {}),
+          ...(token ? { "X-CSRF-Token": token } : {})
+        }
       });
 
       if (res.status === 401) {
-        const key = prompt("Ingresa PANEL_API_KEY del panel:");
-        if (key) {
-          localStorage.setItem("panel_api_key", key);
-          location.reload();
-        }
+        window.location.href = "/admin/login";
         throw new Error("No autorizado");
       }
 

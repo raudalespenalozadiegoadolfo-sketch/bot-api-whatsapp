@@ -7,6 +7,10 @@ const {
 } = require("../middleware/requireAdmin");
 
 const {
+  safeEqual,
+} = require("../middleware/security");
+
+const {
   showPanel,
   getActiveOrders,
   getHistory,
@@ -33,7 +37,10 @@ function protectPanel(req, res, next) {
 
   if (
     env.PANEL_API_KEY &&
-    receivedKey === env.PANEL_API_KEY
+    safeEqual(
+      receivedKey,
+      env.PANEL_API_KEY
+    )
   ) {
     return next();
   }

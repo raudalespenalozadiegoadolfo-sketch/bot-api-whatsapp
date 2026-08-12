@@ -9,12 +9,23 @@ const {
   "../controllers/authController"
 );
 
+const {
+  csrfToken,
+  loginRateLimit,
+} = require("../middleware/security");
+
 const router =
   express.Router();
 
 router.post(
   "/login",
+  loginRateLimit,
   login
+);
+
+router.get(
+  "/csrf",
+  csrfToken
 );
 
 router.get(

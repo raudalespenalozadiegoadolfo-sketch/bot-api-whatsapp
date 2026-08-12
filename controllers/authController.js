@@ -115,18 +115,45 @@ async function login(req, res) {
 
     await user.save();
 
-    req.session.usuario = {
+    const sessionUser = {
       id: String(user._id),
       nombre: user.nombre,
       usuario: user.usuario,
       rol: user.rol,
     };
 
-    return res.json({
-      ok: true,
-      usuario:
-        req.session.usuario,
-    });
+    return req.session.regenerate(
+      error => {
+        if (error) {
+          console.error(
+            "Error regenerando sesión:",
+            error
+          );
+          return res.status(500).json({
+            ok: false,
+            error: "No se pudo iniciar sesión.",
+          });
+        }
+
+        req.session.usuario = sessionUser;
+
+        return req.session.save(
+          saveError => {
+            if (saveError) {
+              return res.status(500).json({
+                ok: false,
+                error: "No se pudo iniciar sesión.",
+              });
+            }
+
+            return res.json({
+              ok: true,
+              usuario: sessionUser,
+            });
+          }
+        );
+      }
+    );
   } catch (error) {
     console.error(
       "Error al iniciar sesión:",

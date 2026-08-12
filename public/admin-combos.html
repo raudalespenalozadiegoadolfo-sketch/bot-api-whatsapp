@@ -779,10 +779,27 @@
       "/api/admin/categorias";
 
 
+    let csrfToken = "";
+
+    async function getCsrfToken() {
+      if (csrfToken) return csrfToken;
+      const response = await fetch("/api/auth/csrf", {
+        credentials: "same-origin",
+      });
+      if (!response.ok) throw new Error("No se pudo iniciar la sesión segura.");
+      const data = await response.json();
+      csrfToken = data.csrfToken;
+      return csrfToken;
+    }
+
     async function request(
       url,
       options = {}
     ) {
+
+      const method = String(options.method || "GET").toUpperCase();
+      const mutable = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+      const token = mutable ? await getCsrfToken() : "";
 
       const response =
         await fetch(
@@ -798,6 +815,8 @@
                 "application/json",
 
               ...(options.headers || {}),
+
+              ...(token ? { "X-CSRF-Token": token } : {}),
             },
           }
         );
@@ -2688,14 +2707,11 @@ function getFormItems() {
 
       try {
 
-        await fetch(
-          "/admin/logout",
+        await request(
+          "/api/auth/logout",
           {
             method:
               "POST",
-
-            credentials:
-              "same-origin",
           }
         );
 
