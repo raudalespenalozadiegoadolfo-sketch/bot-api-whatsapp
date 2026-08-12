@@ -503,7 +503,11 @@ async function createStoreOrder(
       ? req.body.items
       : [];
 
-    if (!numero) {
+    if (
+      !/^\d{12,15}$/.test(
+        numero
+      )
+    ) {
       return res.status(400).json({
         error:
           "Número inválido",

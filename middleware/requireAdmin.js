@@ -34,7 +34,25 @@ function requireLoginPage(
   return next();
 }
 
+function requireAdminPage(
+  req,
+  res,
+  next
+) {
+  if (
+    req.session?.usuario?.rol !==
+    "administrador"
+  ) {
+    return res.redirect(
+      "/admin/login"
+    );
+  }
+
+  return next();
+}
+
 module.exports = {
   requireAdmin,
   requireLoginPage,
+  requireAdminPage,
 };

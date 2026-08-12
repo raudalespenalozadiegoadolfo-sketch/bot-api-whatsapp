@@ -3,6 +3,10 @@ const express = require("express");
 const env = require("../config/env");
 
 const {
+  requireAdminPage,
+} = require("../middleware/requireAdmin");
+
+const {
   showPanel,
   getActiveOrders,
   getHistory,
@@ -17,7 +21,10 @@ const router = express.Router();
 ========================= */
 
 function protectPanel(req, res, next) {
-  if (!env.PANEL_API_KEY) {
+  if (
+    req.session?.usuario?.rol ===
+      "administrador"
+  ) {
     return next();
   }
 
@@ -25,6 +32,7 @@ function protectPanel(req, res, next) {
     req.get("x-api-key") || "";
 
   if (
+    env.PANEL_API_KEY &&
     receivedKey === env.PANEL_API_KEY
   ) {
     return next();
@@ -43,7 +51,11 @@ router.get("/", (_req, res) => {
   return res.redirect("/panel");
 });
 
-router.get("/panel", showPanel);
+router.get(
+  "/panel",
+  requireAdminPage,
+  showPanel
+);
 
 /* =========================
    API PROTEGIDA
