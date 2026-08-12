@@ -6,6 +6,24 @@ const mongoose = require("mongoose");
 
 const productoSchema = new mongoose.Schema(
   {
+    legacyId: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 80,
+      index: true,
+    },
+
+    source: {
+      type: String,
+      enum: [
+        "legacy",
+        "admin",
+      ],
+      default: "admin",
+      index: true,
+    },
+
     name: {
       type: String,
       required: [

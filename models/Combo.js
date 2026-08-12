@@ -39,6 +39,16 @@ const comboItemSchema = new mongoose.Schema(
       trim: true,
     },
 
+    excludedProductIds: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Producto",
+        },
+      ],
+      default: [],
+    },
+
     /*
      * Texto que verá el cliente.
      *
