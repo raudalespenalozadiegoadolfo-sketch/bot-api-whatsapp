@@ -4,6 +4,18 @@ const express = require("express");
 const mongoose = require("mongoose");
 const path = require("path");
 
+const session = require("express-session");
+
+const {
+  MongoStore,
+} = require("connect-mongo");
+
+const env = require("./config/env");
+
+/* =========================
+   SINCRONIZACIONES
+========================= */
+
 const {
   syncLegacyCategories,
 } = require(
@@ -15,32 +27,6 @@ const {
 } = require(
   "./services/productSyncService"
 );
-
-const adminComboRoutes = require(
-  "./routes/adminComboRoutes"
-);
-
-const session = require("express-session");
-
-const {
-  MongoStore,
-} = require("connect-mongo");
-
-const env = require("./config/env");
-
-/* =========================
-   RUTAS DE CATEGORÍAS
-========================= */
-
-const adminCategoryRoutes = require(
-  "./routes/adminCategoryRoutes"
-);
-
-/* =========================
-   RUTAS DE COMBOS
-========================= */
-
-
 
 /* =========================
    RUTAS EXISTENTES
@@ -70,6 +56,18 @@ const adminProductRoutes = require(
   "./routes/adminProductRoutes"
 );
 
+const adminCategoryRoutes = require(
+  "./routes/adminCategoryRoutes"
+);
+
+const adminComboRoutes = require(
+  "./routes/adminComboRoutes"
+);
+
+const adminCouponRoutes = require(
+  "./routes/adminCouponRoutes"
+);
+
 /* =========================
    SEGURIDAD ADMINISTRATIVA
 ========================= */
@@ -87,6 +85,10 @@ const {
   "./controllers/authController"
 );
 
+/* =========================
+   APP
+========================= */
+
 const app = express();
 
 const isProduction =
@@ -95,11 +97,15 @@ const isProduction =
 
 /*
  * Render funciona detrás de un proxy.
- * Esto permite utilizar cookies seguras HTTPS
- * correctamente en producción.
+ *
+ * Esto permite utilizar cookies seguras
+ * correctamente cuando se usa HTTPS.
  */
 if (isProduction) {
-  app.set("trust proxy", 1);
+  app.set(
+    "trust proxy",
+    1
+  );
 }
 
 /* =========================
@@ -125,34 +131,47 @@ const sessionSecret =
 
 app.use(
   session({
-    name: "marisco_admin",
+    name:
+      "marisco_admin",
 
-    secret: sessionSecret,
+    secret:
+      sessionSecret,
 
-    resave: false,
+    resave:
+      false,
 
-    saveUninitialized: false,
+    saveUninitialized:
+      false,
 
-    rolling: true,
+    rolling:
+      true,
 
-    store: MongoStore.create({
-      mongoUrl: env.MONGO_URI,
+    store:
+      MongoStore.create({
+        mongoUrl:
+          env.MONGO_URI,
 
-      collectionName:
-        "admin_sessions",
+        collectionName:
+          "admin_sessions",
 
-      ttl: 60 * 60 * 12,
+        ttl:
+          60 *
+          60 *
+          12,
 
-      autoRemove:
-        "native",
-    }),
+        autoRemove:
+          "native",
+      }),
 
     cookie: {
-      httpOnly: true,
+      httpOnly:
+        true,
 
-      secure: isProduction,
+      secure:
+        isProduction,
 
-      sameSite: "lax",
+      sameSite:
+        "lax",
 
       maxAge:
         1000 *
@@ -169,22 +188,27 @@ app.use(
 
 app.use(
   express.json({
-    limit: "10mb",
+    limit:
+      "10mb",
 
     verify: (
       req,
       _res,
       buffer
     ) => {
-      req.rawBody = buffer;
+      req.rawBody =
+        buffer;
     },
   })
 );
 
 app.use(
   express.urlencoded({
-    extended: false,
-    limit: "2mb",
+    extended:
+      false,
+
+    limit:
+      "2mb",
   })
 );
 
@@ -193,12 +217,14 @@ app.use(
 ========================= */
 
 /*
- * Entrada principal del administrador.
+ * Entrada principal.
  */
 app.get(
   "/admin",
   (req, res) => {
-    if (req.session?.usuario) {
+    if (
+      req.session?.usuario
+    ) {
       return res.redirect(
         "/admin/productos"
       );
@@ -211,12 +237,14 @@ app.get(
 );
 
 /*
- * Página de inicio de sesión.
+ * Login.
  */
 app.get(
   "/admin/login",
   (req, res) => {
-    if (req.session?.usuario) {
+    if (
+      req.session?.usuario
+    ) {
       return res.redirect(
         "/admin/productos"
       );
@@ -233,7 +261,7 @@ app.get(
 );
 
 /*
- * Página administrativa de productos.
+ * Productos.
  */
 app.get(
   "/admin/productos",
@@ -250,7 +278,7 @@ app.get(
 );
 
 /*
- * Página administrativa de combos.
+ * Combos.
  */
 app.get(
   "/admin/combos",
@@ -267,8 +295,28 @@ app.get(
 );
 
 /*
- * Evita que alguien abra directamente
- * el HTML de productos sin iniciar sesión.
+ * Cupones.
+ */
+app.get(
+  "/admin/cupones",
+  requireLoginPage,
+  (_req, res) => {
+    return res.sendFile(
+      path.join(
+        __dirname,
+        "public",
+        "admin-cupones.html"
+      )
+    );
+  }
+);
+
+/* =========================
+   PROTEGER HTML DIRECTOS
+========================= */
+
+/*
+ * Productos.
  */
 app.get(
   "/admin-productos.html",
@@ -285,8 +333,7 @@ app.get(
 );
 
 /*
- * Evita que alguien abra directamente
- * el HTML de combos sin iniciar sesión.
+ * Combos.
  */
 app.get(
   "/admin-combos.html",
@@ -297,6 +344,23 @@ app.get(
         __dirname,
         "public",
         "admin-combos.html"
+      )
+    );
+  }
+);
+
+/*
+ * Cupones.
+ */
+app.get(
+  "/admin-cupones.html",
+  requireLoginPage,
+  (_req, res) => {
+    return res.sendFile(
+      path.join(
+        __dirname,
+        "public",
+        "admin-cupones.html"
       )
     );
   }
@@ -313,11 +377,13 @@ app.use(
       "public"
     ),
     {
-      index: false,
+      index:
+        false,
 
-      maxAge: isProduction
-        ? "1h"
-        : 0,
+      maxAge:
+        isProduction
+          ? "1h"
+          : 0,
     }
   )
 );
@@ -362,15 +428,30 @@ app.use(
   adminComboRoutes
 );
 
+/*
+ * Cupones.
+ */
+app.use(
+  "/api/admin/cupones",
+  requireAdmin,
+  adminCouponRoutes
+);
+
 /* =========================
    RUTAS EXISTENTES
 ========================= */
 
-app.use(webhookRoutes);
+app.use(
+  webhookRoutes
+);
 
-app.use(storeRoutes);
+app.use(
+  storeRoutes
+);
 
-app.use(panelRoutes);
+app.use(
+  panelRoutes
+);
 
 /* =========================
    INFORMACIÓN DE SESIÓN
@@ -381,7 +462,8 @@ app.get(
   requireAdmin,
   (req, res) => {
     return res.json({
-      ok: true,
+      ok:
+        true,
 
       usuario:
         req.session.usuario,
@@ -397,7 +479,8 @@ app.get(
   "/health",
   (_req, res) => {
     return res.json({
-      ok: true,
+      ok:
+        true,
 
       service:
         "Marisco Alegre PRO",
@@ -413,7 +496,8 @@ app.get(
         "development",
 
       timestamp:
-        new Date().toISOString(),
+        new Date()
+          .toISOString(),
     });
   }
 );
@@ -427,7 +511,8 @@ app.use(
     return res
       .status(404)
       .json({
-        ok: false,
+        ok:
+          false,
 
         error:
           "Ruta no encontrada",
@@ -465,10 +550,12 @@ app.use(
 
     return res
       .status(
-        error.status || 500
+        error.status ||
+        500
       )
       .json({
-        ok: false,
+        ok:
+          false,
 
         error:
           "Error interno",
@@ -496,17 +583,21 @@ async function startServer() {
     );
 
     /*
-     * Crear el administrador inicial
+     * Crear administrador inicial
      * si todavía no existe.
      */
     await createInitialAdmin();
 
     /*
      * Sincronizar categorías
-     * del menú actual.
+     * del menú anterior.
      */
     await syncLegacyCategories();
 
+    /*
+     * Sincronizar productos
+     * del menú anterior.
+     */
     await syncLegacyProducts();
 
     app.listen(
@@ -521,7 +612,19 @@ async function startServer() {
         );
 
         console.log(
+          `🍽️ Productos: http://localhost:${env.PORT}/admin/productos`
+        );
+
+        console.log(
           `🍔 Combos: http://localhost:${env.PORT}/admin/combos`
+        );
+
+        console.log(
+          `🎟️ Cupones: http://localhost:${env.PORT}/admin/cupones`
+        );
+
+        console.log(
+          `🛒 Tienda: http://localhost:${env.PORT}/tienda`
         );
       }
     );
@@ -533,7 +636,8 @@ async function startServer() {
         error
     );
 
-    process.exitCode = 1;
+    process.exitCode =
+      1;
   }
 }
 
