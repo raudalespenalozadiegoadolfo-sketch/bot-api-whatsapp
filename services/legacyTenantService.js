@@ -6,6 +6,7 @@ const TenantMembership = require("../models/TenantMembership");
 const LEGACY_TENANT = Object.freeze({
   name: "Marisco Alegre",
   slug: "marisco-alegre",
+  storefrontKey: "marisco-alegre",
   status: "active",
   timezone: "America/Mexico_City",
   currency: "MXN",
@@ -18,9 +19,13 @@ const LEGACY_BRANCH = Object.freeze({
 });
 
 async function ensureLegacyTenant() {
+  const { storefrontKey, ...insertOnly } = LEGACY_TENANT;
   return Tenant.findOneAndUpdate(
     { slug: LEGACY_TENANT.slug },
-    { $setOnInsert: LEGACY_TENANT },
+    {
+      $set: { storefrontKey: LEGACY_TENANT.storefrontKey },
+      $setOnInsert: insertOnly,
+    },
     {
       new: true,
       upsert: true,

@@ -1,4 +1,5 @@
 const WhatsAppChannel = require("../models/WhatsAppChannel");
+const Tenant = require("../models/Tenant");
 
 async function resolveTenantFromPhoneNumberId(
   phoneNumberId
@@ -35,11 +36,21 @@ async function resolveTenantFromPhoneNumberId(
     };
   }
 
+  const tenant = await Tenant.findById(channel.tenantId).lean();
+  if (!tenant || !["active", "onboarding"].includes(tenant.status)) {
+    return {
+      resolved: false,
+      reason: !tenant ? "tenant_not_found" : `tenant_${tenant.status}`,
+      channelId: channel._id,
+    };
+  }
+
   return {
     resolved: true,
     tenantId: channel.tenantId,
     branchId: channel.branchId || null,
     channel,
+    tenant,
   };
 }
 

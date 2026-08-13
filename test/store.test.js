@@ -34,7 +34,10 @@ function setup(cliente, products = []) {
 async function invoke(controller, body) {
   const res = responseRecorder();
   let forwarded;
-  await controller({ body }, res, error => { forwarded = error; });
+  await controller({
+    body,
+    storefrontTenant: { _id: "tenant-legacy", storefrontKey: "marisco-alegre" },
+  }, res, error => { forwarded = error; });
   if (forwarded) throw forwarded;
   return res;
 }

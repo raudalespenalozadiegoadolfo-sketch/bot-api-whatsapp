@@ -818,6 +818,14 @@
   ></div>
 
   <script>
+    function storeApiUrl(action) {
+      const match = window.location.pathname.match(/^\/tienda\/([a-z0-9-]+)\/?$/i);
+      return match
+        ? `/api/store/${encodeURIComponent(match[1])}/${action}`
+        : action === "menu"
+          ? "/api/menu"
+          : "/api/tienda/pedido";
+    }
     let menu = [];
     let combos = [];
     let categories = [];
@@ -964,7 +972,7 @@
       try {
         const response =
           await fetch(
-            `/api/menu?timestamp=${Date.now()}`,
+            `${storeApiUrl("menu")}?timestamp=${Date.now()}`,
             {
               method: "GET",
               cache: "no-store",
@@ -2116,7 +2124,7 @@
       try {
         const response =
           await fetch(
-            "/api/tienda/pedido",
+            storeApiUrl("pedido"),
             {
               method: "POST",
               headers: {

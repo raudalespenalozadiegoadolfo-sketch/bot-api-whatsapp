@@ -3,7 +3,6 @@ const path = require("path");
 const Cliente = require("../models/Cliente");
 const Producto = require("../models/Producto");
 const Combo = require("../models/Combo");
-const { getLegacyCatalogTenant } = require("../services/catalogTenantService");
 
 const {
   products: legacyProducts,
@@ -80,7 +79,7 @@ function normalizedText(value) {
     .toLowerCase();
 }
 
-async function loadAvailableProducts(tenantId) {
+async function loadAvailableProducts(tenantId, includeLegacy = false) {
   const databaseProducts =
     await Producto.find({
       tenantId,
@@ -95,14 +94,13 @@ async function loadAvailableProducts(tenantId) {
 
   const productMap = new Map();
 
-  legacyProducts
-    .map(serializeLegacyProduct)
-    .forEach(product => {
-      productMap.set(
-        productKey(product),
-        product
-      );
-    });
+  if (includeLegacy) {
+    legacyProducts
+      .map(serializeLegacyProduct)
+      .forEach(product => {
+        productMap.set(productKey(product), product);
+      });
+  }
 
   databaseProducts
     .map(serializeDatabaseProduct)
@@ -314,14 +312,18 @@ async function loadAvailableCombos(
 }
 
 async function getMenu(
-  _req,
+  req,
   res,
   next
 ) {
   try {
-    const tenant = await getLegacyCatalogTenant();
+    const tenant = req.storefrontTenant;
+    if (!tenant?._id) return res.status(404).json({ ok: false, error: "Tienda no encontrada." });
     const products =
-      await loadAvailableProducts(tenant._id);
+      await loadAvailableProducts(
+        tenant._id,
+        tenant.storefrontKey === "marisco-alegre"
+      );
 
     const combos =
       await loadAvailableCombos(
@@ -493,6 +495,14 @@ async function createStoreOrder(
   next
 ) {
   try {
+    const tenant = req.storefrontTenant;
+    if (!tenant?._id) return res.status(404).json({ error: "Tienda no encontrada." });
+    if (tenant.storefrontKey !== "marisco-alegre") {
+      return res.status(503).json({
+        error: "El checkout todavía no está habilitado para esta tienda.",
+        code: "checkout_not_enabled",
+      });
+    }
     const numero = cleanPhone(
       req.body.numero
     );
@@ -566,9 +576,8 @@ async function createStoreOrder(
       });
     }
 
-    const tenant = await getLegacyCatalogTenant();
     const availableProducts =
-      await loadAvailableProducts(tenant._id);
+      await loadAvailableProducts(tenant._id, true);
 
     const availableCombos =
       await loadAvailableCombos(

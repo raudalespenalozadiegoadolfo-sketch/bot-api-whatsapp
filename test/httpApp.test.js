@@ -89,7 +89,7 @@ async function startTestApp(options = {}) {
   };
   const tenant = {
     _id: "tenant-1", name: "Marisco Alegre", slug: "marisco-alegre",
-    status: options.tenantStatus || "active",
+    status: options.tenantStatus || "active", storefrontKey: "marisco-alegre",
   };
   const membership = {
     _id: "membership-1", userId: user._id, tenantId: tenant, role: "owner", active: true,

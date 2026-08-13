@@ -357,7 +357,7 @@ function rangesOverlap(first, second) {
    DETECCIÓN PRINCIPAL
 ========================= */
 
-function detectProducts(text = "") {
+function detectProducts(text = "", catalogProducts = products) {
   const normalizedText = prepareText(text);
 
   if (!normalizedText) {
@@ -366,7 +366,7 @@ function detectProducts(text = "") {
 
   const candidates = [];
 
-  for (const product of products) {
+  for (const product of catalogProducts) {
     const match = findBestMatchForProduct(
       normalizedText,
       product

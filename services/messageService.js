@@ -116,10 +116,14 @@ async function alreadyProcessed(messageId) {
 }
 
 function getMessagesFromWebhook(body) {
-  return (
-    body.entry?.flatMap(entry => entry.changes || [])
-      .flatMap(change => change.value?.messages || []) || []
-  );
+  return body.entry?.flatMap(entry => entry.changes || [])
+    .flatMap(change => {
+      const phoneNumberId = change.value?.metadata?.phone_number_id;
+      return (change.value?.messages || []).map(message => ({
+        ...message,
+        webhookMetadata: { phoneNumberId },
+      }));
+    }) || [];
 }
 
 module.exports = {

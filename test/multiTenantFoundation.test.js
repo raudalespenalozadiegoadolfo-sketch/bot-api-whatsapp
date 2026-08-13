@@ -7,14 +7,14 @@ const Branch = require("../models/Branch");
 const WhatsAppChannel = require("../models/WhatsAppChannel");
 
 test("Tenant valida slug y aplica defaults regionales", () => {
-  const tenant = new Tenant({ name: " Marisco Alegre ", slug: "Marisco-Alegre" });
+  const tenant = new Tenant({ name: " Marisco Alegre ", slug: "Marisco-Alegre", storefrontKey: "Marisco-Alegre" });
   assert.equal(tenant.validateSync(), undefined);
   assert.equal(tenant.name, "Marisco Alegre");
   assert.equal(tenant.slug, "marisco-alegre");
   assert.equal(tenant.status, "active");
   assert.equal(tenant.timezone, "America/Mexico_City");
   assert.equal(tenant.currency, "MXN");
-  assert.ok(new Tenant({ name: "X", slug: "slug inseguro!" }).validateSync().errors.slug);
+  assert.ok(new Tenant({ name: "X", slug: "slug inseguro!", storefrontKey: "x" }).validateSync().errors.slug);
   assert.equal(Tenant.schema.path("slug").options.unique, true);
 });
 
@@ -84,6 +84,7 @@ test("resolvedor distingue canal activo, inexistente e inactivo sin fallback", a
   const tenantId = new mongoose.Types.ObjectId();
   const active = loadWithMocks("services/tenantResolverService.js", {
     "models/WhatsAppChannel.js": { findOne: () => ({ lean: async () => ({ _id: "c1", tenantId, active: true }) }) },
+    "models/Tenant.js": { findById: () => ({ lean: async () => ({ _id: tenantId, status: "active", storefrontKey: "tenant-a" }) }) },
   });
   assert.equal((await active.loaded.resolveTenantFromPhoneNumberId("known")).resolved, true);
   active.restore();

@@ -157,6 +157,8 @@ test("webhook completa un procesamiento exitoso", async () => {
       sanitizeError: error => ({ name: error.name, code: "", message: error.message }),
     },
     "controllers/botFlowController.js": { handleIncoming: async () => {} },
+    "services/tenantResolverService.js": { resolveTenantFromPhoneNumberId: async () => ({ resolved: true, tenantId: "tenant-a" }) },
+    "services/tenantCatalogService.js": { createTenantCatalog: () => ({}) },
     "services/webhookLogger.js": { logWebhookEvent: () => {} },
   });
   await context.loaded.processMessages([{ id: "wamid.success" }]);
@@ -188,6 +190,8 @@ test("webhook marca failed y el mismo messageId puede procesarse en el siguiente
         if (flowCalls === 1) throw new Error("fallo transitorio");
       },
     },
+    "services/tenantResolverService.js": { resolveTenantFromPhoneNumberId: async () => ({ resolved: true, tenantId: "tenant-a" }) },
+    "services/tenantCatalogService.js": { createTenantCatalog: () => ({}) },
     "services/webhookLogger.js": { logWebhookEvent: () => {} },
   });
   const message = { id: "wamid.retry" };

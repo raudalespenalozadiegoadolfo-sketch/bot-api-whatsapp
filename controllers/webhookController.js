@@ -9,6 +9,8 @@ const {
 } = require("../services/messageService");
 const { logWebhookEvent } = require("../services/webhookLogger");
 const { handleIncoming } = require("./botFlowController");
+const { resolveTenantFromPhoneNumberId } = require("../services/tenantResolverService");
+const { createTenantCatalog } = require("../services/tenantCatalogService");
 
 function verifyWebhook(req, res) {
   const mode = req.query["hub.mode"];
@@ -68,6 +70,17 @@ async function processMessagesReliably(messages) {
     });
 
     try {
+      const tenantContext = await resolveTenantFromPhoneNumberId(
+        message.webhookMetadata?.phoneNumberId
+      );
+      if (!tenantContext.resolved) {
+        logWebhookEvent("warn", "tenant_resolution_rejected", {
+          messageId,
+          reason: tenantContext.reason,
+        });
+        continue;
+      }
+
       acquisition = await acquireMessage(messageId);
 
       if (!acquisition.acquired) {
@@ -95,7 +108,10 @@ async function processMessagesReliably(messages) {
         }
       );
 
-      await handleIncoming(message);
+      await handleIncoming(message, {
+        ...tenantContext,
+        catalog: createTenantCatalog(tenantContext.tenantId),
+      });
 
       await completeMessage(
         messageId,

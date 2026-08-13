@@ -6,6 +6,25 @@ const {
   getMenu,
   createStoreOrder,
 } = require("../controllers/storeController");
+const { getLegacyCatalogTenant } = require("../services/catalogTenantService");
+const { resolveStorefront } = require("../services/storefrontService");
+
+async function legacyStorefront(req, res, next) {
+  try {
+    req.storefrontTenant = await getLegacyCatalogTenant();
+    req.storefrontLegacyAlias = true;
+    return next();
+  } catch (error) { return next(error); }
+}
+
+async function storefrontContext(req, res, next) {
+  try {
+    const tenant = await resolveStorefront(req.params.storefrontKey);
+    if (!tenant) return res.status(404).json({ ok: false, error: "Tienda no encontrada." });
+    req.storefrontTenant = tenant;
+    return next();
+  } catch (error) { return next(error); }
+}
 
 const CHECKOUT_WINDOW_MS =
   60 * 1000;
@@ -71,10 +90,19 @@ function checkoutRateLimit(
   return next();
 }
 
-router.get("/tienda", showStore);
-router.get("/api/menu", getMenu);
+router.get("/tienda", legacyStorefront, showStore);
+router.get("/tienda/:storefrontKey", storefrontContext, showStore);
+router.get("/api/menu", legacyStorefront, getMenu);
+router.get("/api/store/:storefrontKey/menu", storefrontContext, getMenu);
 router.post(
   "/api/tienda/pedido",
+  legacyStorefront,
+  checkoutRateLimit,
+  createStoreOrder
+);
+router.post(
+  "/api/store/:storefrontKey/pedido",
+  storefrontContext,
   checkoutRateLimit,
   createStoreOrder
 );

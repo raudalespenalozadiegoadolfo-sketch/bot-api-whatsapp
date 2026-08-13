@@ -37,23 +37,20 @@ const {
   sendList,
 } = require("../services/whatsappService");
 
-const {
-  getCategories,
-  getProductsByCategory,
-  findProductById,
-} = require("../services/menuService");
-
 const env = require("../config/env");
 
 /* =========================
    CONFIGURACIÓN
 ========================= */
 
-function storeUrl() {
-  return (
-    env.STORE_URL ||
-    "http://localhost:10000/tienda"
-  );
+function storeUrl(context) {
+  const legacyUrl = env.STORE_URL || "http://localhost:10000/tienda";
+  if (context?.tenant?.storefrontKey === "marisco-alegre") return legacyUrl;
+  if (!context?.tenant?.storefrontKey) {
+    throw new Error("El tenant no tiene storefrontKey configurado.");
+  }
+  const baseUrl = legacyUrl.replace(/\/tienda(?:\/[^/]+)?\/?$/, "");
+  return `${baseUrl}/tienda/${context.tenant.storefrontKey}`;
 }
 
 function menuImageUrl() {
@@ -106,7 +103,8 @@ function cartButtons() {
 
 async function welcome(
   numero,
-  cliente
+  cliente,
+  context
 ) {
   const restaurante =
     env.RESTAURANT_NAME ||
@@ -165,7 +163,7 @@ async function welcome(
 
   return sendText(
     numero,
-    `🌐 En la tienda puedes cambiar productos y cantidades antes de confirmar:\n${storeUrl()}`
+    `🌐 En la tienda puedes cambiar productos y cantidades antes de confirmar:\n${storeUrl(context)}`
   );
 }
 
@@ -190,12 +188,13 @@ function showMenu(numero) {
   );
 }
 
-function showCategories(
+async function showCategories(
   numero,
-  type
+  type,
+  catalog
 ) {
   const categories =
-    getCategories(type);
+    await catalog.getCategories(type);
 
   const rows = categories.map(
     (category, index) => ({
@@ -217,13 +216,14 @@ function showCategories(
   );
 }
 
-function showProducts(
+async function showProducts(
   numero,
   type,
-  categoryIndex
+  categoryIndex,
+  catalog
 ) {
   const categories =
-    getCategories(type);
+    await catalog.getCategories(type);
 
   const category =
     categories[categoryIndex];
@@ -233,10 +233,10 @@ function showProducts(
   }
 
   const rows =
-    getProductsByCategory(
+    (await catalog.getProductsByCategory(
       type,
       category
-    ).map(product => ({
+    )).map(product => ({
       id: `product_${product.id}`,
       title: product.name,
       description: `$${product.price}`,
@@ -256,8 +256,13 @@ function showProducts(
 ========================= */
 
 async function handleIncoming(
-  message
+  message,
+  context
 ) {
+  if (!context?.tenantId || !context?.catalog) {
+    throw new Error("Se requiere contexto de tenant para procesar WhatsApp.");
+  }
+  const catalog = context.catalog;
   const numero = message.from;
   const input = extractInput(message);
 
@@ -516,7 +521,7 @@ async function handleIncoming(
 
     return sendText(
       numero,
-      `🌐 Tienda online:\n${storeUrl()}\n\nAhí puedes agregar, quitar y cambiar cantidades antes de confirmar.`
+      `🌐 Tienda online:\n${storeUrl(context)}\n\nAhí puedes agregar, quitar y cambiar cantidades antes de confirmar.`
     );
   }
 
@@ -534,7 +539,8 @@ async function handleIncoming(
 
     return showCategories(
       numero,
-      "food"
+      "food",
+      catalog
     );
   }
 
@@ -548,7 +554,8 @@ async function handleIncoming(
 
     return showCategories(
       numero,
-      "drink"
+      "drink",
+      catalog
     );
   }
 
@@ -570,7 +577,8 @@ async function handleIncoming(
     return showProducts(
       numero,
       type,
-      Number(index)
+      Number(index),
+      catalog
     );
   }
 
@@ -597,7 +605,7 @@ async function handleIncoming(
       );
 
     const product =
-      findProductById(productId);
+      await catalog.findProductById(productId);
 
     if (!product) {
       return showMenu(numero);
@@ -652,7 +660,7 @@ async function handleIncoming(
 
     return sendButtons(
       numero,
-      `${ticket(cliente)}\n\nPara modificar productos o cantidades, utiliza la tienda online antes de confirmar:\n${storeUrl()}`,
+      `${ticket(cliente)}\n\nPara modificar productos o cantidades, utiliza la tienda online antes de confirmar:\n${storeUrl(context)}`,
       [
         {
           id: "confirm_order",
@@ -779,10 +787,7 @@ async function handleIncoming(
         text.includes(greeting)
     )
   ) {
-    return welcome(
-      numero,
-      cliente
-    );
+    return welcome(numero, cliente, context);
   }
 
   /* =========================
@@ -798,7 +803,7 @@ async function handleIncoming(
     }
 
     const detected =
-      detectProducts(command);
+      detectProducts(command, await catalog.getProducts());
 
     if (detected.length) {
       detected.forEach(
@@ -845,10 +850,7 @@ async function handleIncoming(
      RESPUESTA PREDETERMINADA
   ========================= */
 
-  return welcome(
-    numero,
-    cliente
-  );
+  return welcome(numero, cliente, context);
 }
 
 module.exports = {

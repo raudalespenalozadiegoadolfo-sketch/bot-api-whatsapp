@@ -26,6 +26,8 @@ test("GET acepta token válido y devuelve challenge", () => {
       sanitizeError: error => ({ name: error.name, code: "", message: error.message }),
     },
     "controllers/botFlowController.js": { handleIncoming: async () => {} },
+    "services/tenantResolverService.js": { resolveTenantFromPhoneNumberId: async () => ({ resolved: true, tenantId: "tenant-a" }) },
+    "services/tenantCatalogService.js": { createTenantCatalog: () => ({}) },
   });
   const res = responseRecorder();
   context.loaded.verifyWebhook(request({ query: {
@@ -46,6 +48,8 @@ test("GET rechaza token inválido", () => {
       sanitizeError: error => ({ name: error.name, code: "", message: error.message }),
     },
     "controllers/botFlowController.js": { handleIncoming: async () => {} },
+    "services/tenantResolverService.js": { resolveTenantFromPhoneNumberId: async () => ({ resolved: true, tenantId: "tenant-a" }) },
+    "services/tenantCatalogService.js": { createTenantCatalog: () => ({}) },
   });
   const res = responseRecorder();
   context.loaded.verifyWebhook(request({ query: {
@@ -68,6 +72,8 @@ test("POST con firma válida responde 200 y procesa el mensaje sin contactar Met
       sanitizeError: error => ({ name: error.name, code: "", message: error.message }),
     },
     "controllers/botFlowController.js": { handleIncoming: async message => processed.push(message.id) },
+    "services/tenantResolverService.js": { resolveTenantFromPhoneNumberId: async () => ({ resolved: true, tenantId: "tenant-a" }) },
+    "services/tenantCatalogService.js": { createTenantCatalog: () => ({}) },
   });
   const res = responseRecorder();
   context.loaded.receiveWebhook(request({ rawBody: body, signature }), res);
@@ -89,6 +95,8 @@ test("POST con firma inválida responde 401 y no procesa", async () => {
       sanitizeError: error => ({ name: error.name, code: "", message: error.message }),
     },
     "controllers/botFlowController.js": { handleIncoming: async () => { calls += 1; } },
+    "services/tenantResolverService.js": { resolveTenantFromPhoneNumberId: async () => ({ resolved: true, tenantId: "tenant-a" }) },
+    "services/tenantCatalogService.js": { createTenantCatalog: () => ({}) },
   });
   const res = responseRecorder();
   context.loaded.receiveWebhook(request({ rawBody: body, signature: "sha256=invalid" }), res);

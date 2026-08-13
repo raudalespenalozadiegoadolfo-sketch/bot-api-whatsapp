@@ -17,6 +17,15 @@ const tenantSchema = new mongoose.Schema(
       match: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
       unique: true,
     },
+    storefrontKey: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true,
+      maxlength: 80,
+      match: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      unique: true,
+    },
     status: {
       type: String,
       enum: ["active", "suspended", "onboarding", "cancelled"],
