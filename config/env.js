@@ -3,6 +3,10 @@ require("dotenv").config();
 const env = {
   TOKEN: process.env.TOKEN,
   PHONE_NUMBER_ID: process.env.PHONE_NUMBER_ID,
+  WHATSAPP_BUSINESS_ACCOUNT_ID:
+    process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "",
+  WHATSAPP_DISPLAY_PHONE_NUMBER:
+    process.env.WHATSAPP_DISPLAY_PHONE_NUMBER || "",
   VERIFY_TOKEN: process.env.VERIFY_TOKEN,
   APP_SECRET: process.env.APP_SECRET,
   MONGO_URI: process.env.MONGO_URI,
