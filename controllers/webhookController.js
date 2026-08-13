@@ -1,6 +1,13 @@
 const crypto = require("crypto");
 const env = require("../config/env");
-const { getMessagesFromWebhook } = require("../services/messageService");
+const {
+  acquireMessage,
+  completeMessage,
+  failMessage,
+  getMessagesFromWebhook,
+  sanitizeError,
+} = require("../services/messageService");
+const { logWebhookEvent } = require("../services/webhookLogger");
 const { handleIncoming } = require("./botFlowController");
 
 function verifyWebhook(req, res) {
@@ -51,37 +58,76 @@ function validateSignature(req) {
   }
 }
 
-async function processMessages(messages) {
+async function processMessagesReliably(messages) {
   for (const message of messages) {
+    const messageId = message.id;
+    let acquisition = null;
+
+    logWebhookEvent("info", "webhook_received", {
+      messageId,
+    });
+
     try {
-      console.log("📩 Procesando mensaje:", {
-        id: message.id,
-        from: message.from,
-        type: message.type,
-        text: message.text?.body || "",
-        button:
-          message.interactive?.button_reply?.id || "",
-        list:
-          message.interactive?.list_reply?.id || "",
-      });
+      acquisition = await acquireMessage(messageId);
+
+      if (!acquisition.acquired) {
+        logWebhookEvent(
+          "info",
+          acquisition.reason === "completed"
+            ? "duplicate_completed"
+            : "processing_active",
+          {
+            messageId,
+            attempts: acquisition.attempts,
+          }
+        );
+        continue;
+      }
+
+      logWebhookEvent(
+        "info",
+        acquisition.reclaimed
+          ? "stale_or_failed_reclaimed"
+          : "processing_acquired",
+        {
+          messageId,
+          attempts: acquisition.attempts,
+        }
+      );
 
       await handleIncoming(message);
 
-      console.log(
-        "✅ Mensaje procesado correctamente:",
-        message.id
-      );
-    } catch (error) {
-      console.error(
-        "❌ ERROR COMPLETO EN HANDLE INCOMING:"
+      await completeMessage(
+        messageId,
+        acquisition.processingToken
       );
 
-      console.error(
-        error.response?.data ||
-          error.stack ||
-          error.message ||
-          error
-      );
+      logWebhookEvent("info", "processing_completed", {
+        messageId,
+        attempts: acquisition.attempts,
+      });
+    } catch (error) {
+      const safeError = sanitizeError(error);
+
+      if (acquisition?.acquired) {
+        try {
+          await failMessage(
+            messageId,
+            acquisition.processingToken,
+            error
+          );
+        } catch (stateError) {
+          logWebhookEvent("error", "processing_state_update_failed", {
+            messageId,
+            error: sanitizeError(stateError),
+          });
+        }
+      }
+
+      logWebhookEvent("error", "processing_failed", {
+        messageId,
+        error: safeError,
+      });
     }
   }
 }
@@ -102,10 +148,11 @@ function receiveWebhook(req, res) {
   res.sendStatus(200);
 
   // Procesamos después de responder a Meta.
-  void processMessages(messages);
+  void processMessagesReliably(messages);
 }
 
 module.exports = {
+  processMessages: processMessagesReliably,
   verifyWebhook,
   receiveWebhook,
 };

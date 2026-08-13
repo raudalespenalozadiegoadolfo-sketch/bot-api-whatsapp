@@ -19,7 +19,12 @@ function request({ query = {}, rawBody = Buffer.from(""), signature = "" } = {})
 test("GET acepta token válido y devuelve challenge", () => {
   const context = loadWithMocks("controllers/webhookController.js", {
     "config/env.js": env,
-    "services/messageService.js": { getMessagesFromWebhook: () => [] },
+    "services/messageService.js": {
+      getMessagesFromWebhook: () => [],
+      acquireMessage: async () => ({ acquired: false, reason: "completed" }),
+      completeMessage: async () => {}, failMessage: async () => {},
+      sanitizeError: error => ({ name: error.name, code: "", message: error.message }),
+    },
     "controllers/botFlowController.js": { handleIncoming: async () => {} },
   });
   const res = responseRecorder();
@@ -34,7 +39,12 @@ test("GET acepta token válido y devuelve challenge", () => {
 test("GET rechaza token inválido", () => {
   const context = loadWithMocks("controllers/webhookController.js", {
     "config/env.js": env,
-    "services/messageService.js": { getMessagesFromWebhook: () => [] },
+    "services/messageService.js": {
+      getMessagesFromWebhook: () => [],
+      acquireMessage: async () => ({ acquired: false, reason: "completed" }),
+      completeMessage: async () => {}, failMessage: async () => {},
+      sanitizeError: error => ({ name: error.name, code: "", message: error.message }),
+    },
     "controllers/botFlowController.js": { handleIncoming: async () => {} },
   });
   const res = responseRecorder();
@@ -51,7 +61,12 @@ test("POST con firma válida responde 200 y procesa el mensaje sin contactar Met
   const signature = `sha256=${crypto.createHmac("sha256", env.APP_SECRET).update(body).digest("hex")}`;
   const context = loadWithMocks("controllers/webhookController.js", {
     "config/env.js": env,
-    "services/messageService.js": { getMessagesFromWebhook: value => value.entry[0].changes[0].value.messages },
+    "services/messageService.js": {
+      getMessagesFromWebhook: value => value.entry[0].changes[0].value.messages,
+      acquireMessage: async () => ({ acquired: true, processingToken: "token", attempts: 1 }),
+      completeMessage: async () => {}, failMessage: async () => {},
+      sanitizeError: error => ({ name: error.name, code: "", message: error.message }),
+    },
     "controllers/botFlowController.js": { handleIncoming: async message => processed.push(message.id) },
   });
   const res = responseRecorder();
@@ -67,7 +82,12 @@ test("POST con firma inválida responde 401 y no procesa", async () => {
   const body = Buffer.from(JSON.stringify({ entry: [] }));
   const context = loadWithMocks("controllers/webhookController.js", {
     "config/env.js": env,
-    "services/messageService.js": { getMessagesFromWebhook: () => [] },
+    "services/messageService.js": {
+      getMessagesFromWebhook: () => [],
+      acquireMessage: async () => ({ acquired: false, reason: "completed" }),
+      completeMessage: async () => {}, failMessage: async () => {},
+      sanitizeError: error => ({ name: error.name, code: "", message: error.message }),
+    },
     "controllers/botFlowController.js": { handleIncoming: async () => { calls += 1; } },
   });
   const res = responseRecorder();

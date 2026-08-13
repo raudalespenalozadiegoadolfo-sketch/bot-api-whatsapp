@@ -56,15 +56,19 @@ test("flujo WhatsApp actual: inicio, producto, cantidad, nombre y ubicación", a
   context.restore();
 });
 
-test("un messageId duplicado no vuelve a procesar al cliente", async () => {
+test("handleIncoming delega la idempotencia al controlador webhook", async () => {
+  const cliente = {
+    numero: "5211", nombre: "", pedidos: [], paso: "inicio",
+    estadoPedido: "sin_pedido", async save() {},
+  };
   let clientCalls = 0;
   const context = loadWithMocks("controllers/botFlowController.js", {
     "services/messageService.js": { alreadyProcessed: async () => true },
-    "services/clienteService.js": { findOrCreateCliente: async () => { clientCalls += 1; } },
+    "services/clienteService.js": { findOrCreateCliente: async () => { clientCalls += 1; return cliente; } },
     "services/whatsappService.js": { sendText: async () => {}, sendImage: async () => {}, sendButtons: async () => {}, sendList: async () => {} },
     "config/env.js": {},
   });
   await context.loaded.handleIncoming({ id: "duplicate", from: "5211", type: "text", text: { body: "hola" } });
-  assert.equal(clientCalls, 0);
+  assert.equal(clientCalls, 1);
   context.restore();
 });

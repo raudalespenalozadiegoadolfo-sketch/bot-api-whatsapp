@@ -1,8 +1,4 @@
 const {
-  alreadyProcessed,
-} = require("../services/messageService");
-
-const {
   extractInput,
 } = require("../services/inputService");
 
@@ -262,13 +258,6 @@ function showProducts(
 async function handleIncoming(
   message
 ) {
-  const processed =
-    await alreadyProcessed(message.id);
-
-  if (processed) {
-    return;
-  }
-
   const numero = message.from;
   const input = extractInput(message);
 
