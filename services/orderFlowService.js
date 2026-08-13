@@ -1,7 +1,7 @@
 const { sendText, sendButtons } = require("./whatsappService");
 const { ticket } = require("./ticketService");
-const { totalOf } = require("./carritoService");
 const { createConfirmedOrder, updateLatestActiveOrder } = require("./orderService");
+const { syncLegacyCustomerOrder } = require("./legacyOrderCompatibilityService");
 
 async function confirmOrder(cliente) {
   if (!cliente.pedidos.length) {
@@ -47,32 +47,7 @@ async function finalizeOrder(cliente, context = {}) {
 
 async function saveToHistory(cliente, estadoFinal, motivoCancelacion = "") {
   await updateLatestActiveOrder(cliente, estadoFinal, motivoCancelacion);
-  if (cliente.pedidos.length) {
-    cliente.historialPedidos.push({
-      fecha: new Date(),
-      estadoFinal,
-      pedidos: cliente.pedidos.map(item => ({
-        productId: item.productId,
-        nombre: item.nombre,
-        precio: item.precio,
-        cantidad: item.cantidad,
-      })),
-      total: totalOf(cliente),
-      nombre: cliente.nombre,
-      numero: cliente.numero,
-      direccion: cliente.direccion,
-      motivoCancelacion,
-    });
-  }
-
-  cliente.pedidos = [];
-  cliente.estadoPedido = "sin_pedido";
-  cliente.paso = "inicio";
-  cliente.productoPendiente = null;
-  cliente.horaConfirmacion = null;
-  cliente.ultimaActividad = new Date();
-
-  await cliente.save();
+  await syncLegacyCustomerOrder(cliente, estadoFinal, motivoCancelacion);
 }
 
 module.exports = {

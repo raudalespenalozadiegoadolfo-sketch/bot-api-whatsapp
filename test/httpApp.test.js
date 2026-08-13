@@ -22,6 +22,7 @@ const testEnv = {
 function queryResult(value) {
   return {
     sort() { return this; },
+    limit() { return this; },
     populate() { return this; },
     async lean() { return value; },
     then(resolve, reject) { return Promise.resolve(value).then(resolve, reject); },
@@ -115,7 +116,11 @@ async function startTestApp(options = {}) {
     },
     "models/Combo.js": { find: () => queryResult([]) },
     "models/ProcessedMessage.js": { create: async () => ({}) },
-    "models/Order.js": { findOneAndUpdate: async () => ({}) },
+    "models/Order.js": {
+      find: () => queryResult([]),
+      findOne: () => queryResult(null),
+      findOneAndUpdate: async () => ({}),
+    },
     "models/Usuario.js": { findOne: () => queryResult(user) },
     "models/Tenant.js": {
       findById: () => queryResult(tenant),

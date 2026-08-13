@@ -106,6 +106,7 @@ test("historial de Tenant A no consulta ni devuelve Cliente B", async () => {
   let query;
   const context = loadWithMocks("controllers/panelController.js", {
     "models/Cliente.js": { find: value => { query = value; return { sort: async () => [] }; } },
+    "services/orderService.js": { getOrderHistory: async () => [] },
   });
   const res = await invoke(context.loaded.getHistory, { tenantId: tenantA, query: {} });
   assert.equal(String(query.tenantId), String(tenantA));
