@@ -56,9 +56,10 @@ function serializeActive(cliente) {
    PEDIDOS ACTIVOS
 ========================= */
 
-async function getActiveOrders(_req, res, next) {
+async function getActiveOrders(req, res, next) {
   try {
     const clientes = await Cliente.find({
+      tenantId: req.tenantId,
       estadoPedido: {
         $ne: "sin_pedido",
       },
@@ -89,6 +90,7 @@ async function getHistory(req, res, next) {
     );
 
     const clientes = await Cliente.find({
+      tenantId: req.tenantId,
       historialPedidos: {
         $exists: true,
         $ne: [],
@@ -144,9 +146,10 @@ async function getHistory(req, res, next) {
    DASHBOARD
 ========================= */
 
-async function getDashboard(_req, res, next) {
+async function getDashboard(req, res, next) {
   try {
     const activos = await Cliente.find({
+      tenantId: req.tenantId,
       estadoPedido: {
         $ne: "sin_pedido",
       },
@@ -154,6 +157,7 @@ async function getDashboard(_req, res, next) {
 
     const clientesConHistorial =
       await Cliente.find({
+        tenantId: req.tenantId,
         historialPedidos: {
           $exists: true,
           $ne: [],
@@ -257,6 +261,7 @@ async function changeOrderState(
     }
 
     const cliente = await Cliente.findOne({
+      tenantId: req.tenantId,
       numero,
     });
 
@@ -283,6 +288,7 @@ async function changeOrderState(
         new Date();
 
       await cliente.save();
+      await require("../services/orderService").updateLatestActiveOrder(cliente, action);
     }
 
     try {

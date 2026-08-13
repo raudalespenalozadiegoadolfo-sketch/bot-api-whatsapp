@@ -185,6 +185,11 @@ test("arranque asegura tenant, branch, admin, membership y canal en orden", asyn
         assert.equal(received, tenant); calls.push("backfill");
       },
     },
+    "services/customerBackfillService.js": {
+      backfillLegacyCustomers: async received => {
+        assert.equal(received, tenant); calls.push("customers");
+      },
+    },
     "services/legacyTenantService.js": {
       ensureLegacyTenant: async () => { calls.push("tenant"); return tenant; },
       ensureLegacyBranch: async received => {
@@ -206,7 +211,7 @@ test("arranque asegura tenant, branch, admin, membership y canal en orden", asyn
   await context.loaded.startServer();
   assert.deepEqual(calls, [
     "mongo", "tenant", "branch", "admin", "membership",
-    "channel", "backfill", "categories", "products", "listen",
+    "channel", "backfill", "customers", "categories", "products", "listen",
   ]);
   context.restore();
 });

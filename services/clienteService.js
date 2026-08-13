@@ -1,11 +1,15 @@
 const Cliente = require("../models/Cliente");
 
-async function findOrCreateCliente(numero) {
+async function findOrCreateCliente(numero, context) {
+  if (!context?.tenantId) throw new Error("Se requiere tenantId para buscar al cliente.");
   const cliente = await Cliente.findOneAndUpdate(
-    { numero },
+    { tenantId: context.tenantId, numero },
     {
-      $setOnInsert: { numero },
-      $set: { ultimaActividad: new Date() },
+      $setOnInsert: { tenantId: context.tenantId, numero },
+      $set: {
+        ultimaActividad: new Date(),
+        ...(context.branchId ? { branchId: context.branchId } : {}),
+      },
     },
     {
       new: true,

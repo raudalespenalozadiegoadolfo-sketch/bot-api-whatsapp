@@ -9,7 +9,7 @@ const ProcessedMessage = require("../models/ProcessedMessage");
 const tenantId = new mongoose.Types.ObjectId();
 
 test("Cliente aplica estados iniciales y valida enums", async () => {
-  const cliente = new Cliente({ numero: "5215512345678" });
+  const cliente = new Cliente({ tenantId, numero: "5215512345678" });
   assert.equal(cliente.paso, "inicio");
   assert.equal(cliente.estadoPedido, "sin_pedido");
   assert.deepEqual(cliente.pedidos, []);

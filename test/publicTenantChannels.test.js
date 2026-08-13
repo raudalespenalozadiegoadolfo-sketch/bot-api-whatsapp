@@ -129,18 +129,26 @@ test("storefront A/B obtiene sólo productos y combos de su contexto", async () 
   context.restore();
 });
 
-test("checkout nuevo se bloquea antes de tocar Cliente y legacy continúa habilitado", async () => {
-  let clientCalls = 0;
+test("checkout nuevo usa Customer del storefront e ignora tenantId del body", async () => {
+  let customerQuery;
   const context = loadWithMocks("controllers/storeController.js", {
-    "models/Cliente.js": { findOneAndUpdate: async () => { clientCalls += 1; } },
+    "models/Cliente.js": { findOneAndUpdate: async query => {
+      customerQuery = query;
+      return {
+        numero: "5215512345678", pedidos: [], estadoPedido: "sin_pedido",
+        async save() {},
+      };
+    } },
+    "models/Producto.js": { find: () => chain([]) },
+    "models/Combo.js": { find: () => chain([]) },
+    "services/orderService.js": { createConfirmedOrder: async () => ({ orderNumber: "A-1", status: "confirmed" }) },
   });
   const res = responseRecorder();
   await context.loaded.createStoreOrder({
     storefrontTenant: { _id: "tenant-b", storefrontKey: "restaurante-b" },
     body: { numero: "5215512345678", tenantId: "tenant-a", items: [{ id: "x" }] },
   }, res, error => { if (error) throw error; });
-  assert.equal(res.statusCode, 503);
-  assert.equal(res.body.code, "checkout_not_enabled");
-  assert.equal(clientCalls, 0);
+  assert.equal(res.statusCode, 400);
+  assert.equal(customerQuery.tenantId, "tenant-b");
   context.restore();
 });

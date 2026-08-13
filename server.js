@@ -7,6 +7,7 @@ const { createInitialAdmin } = require("./controllers/authController");
 const { syncLegacyCategories } = require("./services/categorySyncService");
 const { syncLegacyProducts } = require("./services/productSyncService");
 const { backfillLegacyCatalogTenant } = require("./services/catalogBackfillService");
+const { backfillLegacyCustomers } = require("./services/customerBackfillService");
 const {
   ensureLegacyBranch,
   ensureLegacyMembership,
@@ -34,6 +35,7 @@ async function startServer() {
     });
 
     await backfillLegacyCatalogTenant(tenant);
+    await backfillLegacyCustomers(tenant);
     await syncLegacyCategories(tenant);
     await syncLegacyProducts(tenant);
 

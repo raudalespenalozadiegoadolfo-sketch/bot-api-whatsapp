@@ -10,6 +10,7 @@ const LEGACY_TENANT = Object.freeze({
   status: "active",
   timezone: "America/Mexico_City",
   currency: "MXN",
+  businessType: "restaurant",
 });
 
 const LEGACY_BRANCH = Object.freeze({
@@ -19,11 +20,14 @@ const LEGACY_BRANCH = Object.freeze({
 });
 
 async function ensureLegacyTenant() {
-  const { storefrontKey, ...insertOnly } = LEGACY_TENANT;
+  const { storefrontKey, businessType, ...insertOnly } = LEGACY_TENANT;
   return Tenant.findOneAndUpdate(
     { slug: LEGACY_TENANT.slug },
     {
-      $set: { storefrontKey: LEGACY_TENANT.storefrontKey },
+      $set: {
+        storefrontKey: LEGACY_TENANT.storefrontKey,
+        businessType: LEGACY_TENANT.businessType,
+      },
       $setOnInsert: insertOnly,
     },
     {

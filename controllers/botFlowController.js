@@ -267,7 +267,7 @@ async function handleIncoming(
   const input = extractInput(message);
 
   const cliente =
-    await findOrCreateCliente(numero);
+    await findOrCreateCliente(numero, context);
 
   const command =
     input.value || "";
@@ -311,7 +311,7 @@ async function handleIncoming(
         input.value.longitude,
     };
 
-    return finalizeOrder(cliente);
+    return finalizeOrder(cliente, context);
   }
 
   /* =========================
@@ -462,7 +462,7 @@ async function handleIncoming(
   ========================= */
 
   if (command === "address_yes") {
-    return finalizeOrder(cliente);
+    return finalizeOrder(cliente, context);
   }
 
   if (command === "address_no") {

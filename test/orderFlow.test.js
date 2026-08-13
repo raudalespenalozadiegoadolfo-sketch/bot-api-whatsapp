@@ -10,12 +10,17 @@ function setup() {
   };
   const context = loadWithMocks("services/orderFlowService.js", {
     "services/whatsappService.js": whatsapp,
+    "services/orderService.js": {
+      createConfirmedOrder: async () => ({}),
+      updateLatestActiveOrder: async () => ({}),
+    },
   });
   return { ...context, sent };
 }
 
 function client(overrides = {}) {
   return {
+    _id: "507f1f77bcf86cd799439011", tenantId: "507f1f77bcf86cd799439012",
     numero: "5215512345678", nombre: "", direccion: null,
     pedidos: [{ productId: "p0", nombre: "Camarones", precio: 180, cantidad: 2 }],
     historialPedidos: [], estadoPedido: "armando", paso: "inicio",

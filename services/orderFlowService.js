@@ -1,6 +1,7 @@
 const { sendText, sendButtons } = require("./whatsappService");
 const { ticket } = require("./ticketService");
 const { totalOf } = require("./carritoService");
+const { createConfirmedOrder, updateLatestActiveOrder } = require("./orderService");
 
 async function confirmOrder(cliente) {
   if (!cliente.pedidos.length) {
@@ -31,7 +32,7 @@ async function confirmOrder(cliente) {
   ]);
 }
 
-async function finalizeOrder(cliente) {
+async function finalizeOrder(cliente, context = {}) {
   cliente.paso = "inicio";
   cliente.estadoPedido = "confirmado";
   cliente.horaConfirmacion = new Date();
@@ -39,11 +40,13 @@ async function finalizeOrder(cliente) {
   cliente.productoPendiente = null;
 
   await cliente.save();
+  await createConfirmedOrder(cliente, context);
 
   return sendText(cliente.numero, ticket(cliente, true));
 }
 
 async function saveToHistory(cliente, estadoFinal, motivoCancelacion = "") {
+  await updateLatestActiveOrder(cliente, estadoFinal, motivoCancelacion);
   if (cliente.pedidos.length) {
     cliente.historialPedidos.push({
       fecha: new Date(),

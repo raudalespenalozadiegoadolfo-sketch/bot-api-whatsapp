@@ -46,6 +46,11 @@ const tenantSchema = new mongoose.Schema(
       minlength: 3,
       maxlength: 3,
     },
+    businessType: {
+      type: String,
+      enum: ["restaurant", "retail", "services", "other"],
+      default: "other",
+    },
   },
   { timestamps: true }
 );

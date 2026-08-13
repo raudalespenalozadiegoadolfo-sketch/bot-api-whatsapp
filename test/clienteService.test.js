@@ -8,9 +8,9 @@ test("findOrCreateCliente usa upsert y el número como identidad", async () => {
   const context = loadWithMocks("services/clienteService.js", {
     "models/Cliente.js": { findOneAndUpdate: async (...args) => { captured = args; return expected; } },
   });
-  const result = await context.loaded.findOrCreateCliente(expected.numero);
+  const result = await context.loaded.findOrCreateCliente(expected.numero, { tenantId: "tenant-a" });
   assert.equal(result, expected);
-  assert.deepEqual(captured[0], { numero: expected.numero });
+  assert.deepEqual(captured[0], { tenantId: "tenant-a", numero: expected.numero });
   assert.equal(captured[2].upsert, true);
   assert.equal(captured[2].new, true);
   context.restore();

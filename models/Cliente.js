@@ -23,7 +23,9 @@ const historialSchema = new mongoose.Schema({
 }, { _id: true });
 
 const clienteSchema = new mongoose.Schema({
-  numero: { type: String, unique: true, index: true },
+  tenantId: { type: mongoose.Schema.Types.ObjectId, ref: "Tenant", required: true },
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch", default: null },
+  numero: { type: String, required: true, trim: true },
   nombre: { type: String, default: "" },
   direccion: { type: Object, default: null },
   pedidos: { type: [itemSchema], default: [] },
@@ -53,5 +55,8 @@ const clienteSchema = new mongoose.Schema({
   horaConfirmacion: Date,
   ultimaActividad: Date,
 }, { timestamps: true });
+
+clienteSchema.index({ tenantId: 1, numero: 1 }, { unique: true });
+clienteSchema.index({ tenantId: 1, estadoPedido: 1, ultimaActividad: -1 });
 
 module.exports = mongoose.model("Cliente", clienteSchema);

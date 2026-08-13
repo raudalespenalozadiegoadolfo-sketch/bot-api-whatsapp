@@ -10,6 +10,7 @@ const {
 const {
   safeEqual,
 } = require("../middleware/security");
+const { getLegacyCatalogTenant } = require("../services/catalogTenantService");
 
 const {
   showPanel,
@@ -36,7 +37,13 @@ function protectPanel(req, res, next) {
       env.PANEL_API_KEY
     )
   ) {
-    return next();
+    return getLegacyCatalogTenant()
+      .then(tenant => {
+        req.tenantId = tenant._id;
+        req.tenant = tenant;
+        return next();
+      })
+      .catch(next);
   }
 
   return requireAdmin(req, res, next);

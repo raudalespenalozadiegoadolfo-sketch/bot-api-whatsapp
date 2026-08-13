@@ -1,4 +1,5 @@
 const Tenant = require("../models/Tenant");
+const Branch = require("../models/Branch");
 
 async function resolveStorefront(storefrontKey) {
   const key = String(storefrontKey || "").trim().toLowerCase();
@@ -9,4 +10,10 @@ async function resolveStorefront(storefrontKey) {
   }).lean();
 }
 
-module.exports = { resolveStorefront };
+async function resolveStorefrontBranch(tenantId) {
+  return Branch.findOne({ tenantId, active: { $ne: false } })
+    .sort({ createdAt: 1 })
+    .lean();
+}
+
+module.exports = { resolveStorefront, resolveStorefrontBranch };

@@ -5,6 +5,7 @@ const { loadWithMocks } = require("../test-support/moduleMocks");
 test("flujo WhatsApp actual: inicio, producto, cantidad, nombre y ubicación", async () => {
   const sent = [];
   const cliente = {
+    _id: "507f1f77bcf86cd799439011", tenantId: "507f1f77bcf86cd799439012",
     numero: "5215512345678", nombre: "", direccion: null, pedidos: [],
     historialPedidos: [], productoPendiente: null, pedidoOrigen: "whatsapp",
     paso: "inicio", estadoPedido: "sin_pedido",
@@ -20,6 +21,7 @@ test("flujo WhatsApp actual: inicio, producto, cantidad, nombre y ubicación", a
     "services/messageService.js": { alreadyProcessed: async () => false },
     "services/clienteService.js": { findOrCreateCliente: async () => cliente },
     "services/whatsappService.js": whatsapp,
+    "models/Order.js": { create: async value => value },
     "config/env.js": { STORE_URL: "https://store.test/tienda", RESTAURANT_NAME: "Marisco Alegre", PUBLIC_URL: "https://store.test" },
   });
   const catalog = {

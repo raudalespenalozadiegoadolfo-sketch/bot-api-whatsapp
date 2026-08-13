@@ -5,6 +5,7 @@ const { loadWithMocks, responseRecorder } = require("../test-support/moduleMocks
 function client(overrides = {}) {
   return {
     _id: "client-1", numero: "5215512345678", nombre: "Ana",
+    tenantId: "tenant-a",
     direccion: { latitude: 1, longitude: 2 },
     pedidos: [{ productId: "p0", nombre: "Camarones", precio: 180, cantidad: 2 }],
     historialPedidos: [], estadoPedido: "confirmado", paso: "inicio",
@@ -24,6 +25,7 @@ function setup(cliente) {
   const context = loadWithMocks("controllers/panelController.js", {
     "models/Cliente.js": Cliente,
     "services/whatsappService.js": { sendText: async (...args) => sent.push(args) },
+    "services/orderService.js": { updateLatestActiveOrder: async () => ({}) },
   });
   return { ...context, sent };
 }
@@ -31,7 +33,7 @@ function setup(cliente) {
 async function call(controller, req = {}) {
   const res = responseRecorder();
   let error;
-  await controller(req, res, value => { error = value; });
+  await controller({ tenantId: "tenant-a", query: {}, body: {}, params: {}, ...req }, res, value => { error = value; });
   if (error) throw error;
   return res;
 }

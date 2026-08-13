@@ -7,11 +7,12 @@ const {
   createStoreOrder,
 } = require("../controllers/storeController");
 const { getLegacyCatalogTenant } = require("../services/catalogTenantService");
-const { resolveStorefront } = require("../services/storefrontService");
+const { resolveStorefront, resolveStorefrontBranch } = require("../services/storefrontService");
 
 async function legacyStorefront(req, res, next) {
   try {
     req.storefrontTenant = await getLegacyCatalogTenant();
+    req.storefrontBranch = await resolveStorefrontBranch(req.storefrontTenant._id);
     req.storefrontLegacyAlias = true;
     return next();
   } catch (error) { return next(error); }
@@ -22,6 +23,7 @@ async function storefrontContext(req, res, next) {
     const tenant = await resolveStorefront(req.params.storefrontKey);
     if (!tenant) return res.status(404).json({ ok: false, error: "Tienda no encontrada." });
     req.storefrontTenant = tenant;
+    req.storefrontBranch = await resolveStorefrontBranch(tenant._id);
     return next();
   } catch (error) { return next(error); }
 }

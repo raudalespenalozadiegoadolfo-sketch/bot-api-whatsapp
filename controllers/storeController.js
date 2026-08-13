@@ -20,6 +20,7 @@ const {
 const {
   ticket,
 } = require("../services/ticketService");
+const { createConfirmedOrder } = require("../services/orderService");
 
 const {
   sendText,
@@ -497,12 +498,6 @@ async function createStoreOrder(
   try {
     const tenant = req.storefrontTenant;
     if (!tenant?._id) return res.status(404).json({ error: "Tienda no encontrada." });
-    if (tenant.storefrontKey !== "marisco-alegre") {
-      return res.status(503).json({
-        error: "El checkout todavía no está habilitado para esta tienda.",
-        code: "checkout_not_enabled",
-      });
-    }
     const numero = cleanPhone(
       req.body.numero
     );
@@ -539,14 +534,17 @@ async function createStoreOrder(
 
     const cliente =
       await Cliente.findOneAndUpdate(
-        { numero },
+        { tenantId: tenant._id, numero },
         {
           $setOnInsert: {
+            tenantId: tenant._id,
+            ...(req.storefrontBranch?._id ? { branchId: req.storefrontBranch._id } : {}),
             numero,
           },
           $set: {
             ultimaActividad:
               new Date(),
+            ...(req.storefrontBranch?._id ? { branchId: req.storefrontBranch._id } : {}),
             ...(nombre
               ? { nombre }
               : {}),
@@ -734,6 +732,22 @@ async function createStoreOrder(
       new Date();
 
     await cliente.save();
+
+    if (tenant.storefrontKey !== "marisco-alegre") {
+      cliente.estadoPedido = "confirmado";
+      cliente.horaConfirmacion = new Date();
+      await cliente.save();
+      const order = await createConfirmedOrder(cliente, {
+        branchId: req.storefrontBranch?._id || null,
+        currency: tenant.currency || "MXN",
+      });
+      return res.status(201).json({
+        ok: true,
+        orderNumber: order.orderNumber,
+        total: totalOf(cliente),
+        status: order.status,
+      });
+    }
 
     try {
       await sendText(
