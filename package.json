@@ -10,7 +10,9 @@
     "check": "node --check server.js",
     "test": "node --test --test-concurrency=1",
     "test:watch": "node --test --test-concurrency=1 --watch",
-    "audit:indexes": "node scripts/audit-indexes.js"
+    "audit:indexes": "node scripts/audit-indexes.js",
+    "migrate:indexes": "node scripts/migrate-legacy-indexes.js",
+    "migrate:indexes:dry": "node scripts/migrate-legacy-indexes.js"
   },
   "engines": {
     "node": ">=20"
