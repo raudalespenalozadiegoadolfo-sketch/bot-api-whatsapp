@@ -180,6 +180,11 @@ test("arranque asegura tenant, branch, admin, membership y canal en orden", asyn
     "services/productSyncService.js": {
       syncLegacyProducts: async () => { calls.push("products"); },
     },
+    "services/catalogBackfillService.js": {
+      backfillLegacyCatalogTenant: async received => {
+        assert.equal(received, tenant); calls.push("backfill");
+      },
+    },
     "services/legacyTenantService.js": {
       ensureLegacyTenant: async () => { calls.push("tenant"); return tenant; },
       ensureLegacyBranch: async received => {
@@ -201,7 +206,7 @@ test("arranque asegura tenant, branch, admin, membership y canal en orden", asyn
   await context.loaded.startServer();
   assert.deepEqual(calls, [
     "mongo", "tenant", "branch", "admin", "membership",
-    "channel", "categories", "products", "listen",
+    "channel", "backfill", "categories", "products", "listen",
   ]);
   context.restore();
 });

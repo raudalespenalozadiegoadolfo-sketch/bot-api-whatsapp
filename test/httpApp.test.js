@@ -116,7 +116,10 @@ async function startTestApp(options = {}) {
     "models/Combo.js": { find: () => queryResult([]) },
     "models/ProcessedMessage.js": { create: async () => ({}) },
     "models/Usuario.js": { findOne: () => queryResult(user) },
-    "models/Tenant.js": { findById: () => queryResult(tenant) },
+    "models/Tenant.js": {
+      findById: () => queryResult(tenant),
+      findOne: () => queryResult(tenant),
+    },
     "models/TenantMembership.js": {
       find: () => queryResult(memberships),
       findOne: () => queryResult(

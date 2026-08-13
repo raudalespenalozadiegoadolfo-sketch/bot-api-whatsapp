@@ -7,6 +7,7 @@ const Combo = require(
 const Producto = require(
   "../models/Producto"
 );
+const Categoria = require("../models/Categoria");
 
 /* =========================
    LIMPIAR TEXTO
@@ -166,7 +167,8 @@ function cleanComboPayload(
 ========================= */
 
 async function validateAndPrepareItems(
-  items
+  items,
+  tenantId
 ) {
   if (
     !Array.isArray(items) ||
@@ -204,6 +206,7 @@ async function validateAndPrepareItems(
 
       const product =
         await Producto.findOne({
+          tenantId,
           _id:
             item.productId,
 
@@ -261,11 +264,31 @@ async function validateAndPrepareItems(
       );
     }
 
+    const categoryDocument = await Categoria.findOne({
+      tenantId,
+      normalizedName: category.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
+      active: { $ne: false },
+    }).lean();
+    if (!categoryDocument) {
+      throw new Error("La categoría seleccionada no pertenece a este negocio.");
+    }
+
+    if (item.excludedProductIds.length) {
+      const ownedExcluded = await Producto.countDocuments({
+        _id: { $in: item.excludedProductIds },
+        tenantId,
+      });
+      if (ownedExcluded !== item.excludedProductIds.length) {
+        throw new Error("Una exclusión de producto no pertenece a este negocio.");
+      }
+    }
+
     /*
      * Consulta base:
      * productos activos de la categoría.
      */
     const query = {
+      tenantId,
       category: {
         $regex:
           `^${escapeRegex(
@@ -422,12 +445,12 @@ function cleanPreparedItems(
 ========================= */
 
 async function listCombos(
-  _req,
+  req,
   res
 ) {
   try {
     const combos =
-      await Combo.find()
+      await Combo.find({ tenantId: req.tenantId })
         .sort({
           order: 1,
           name: 1,
@@ -507,7 +530,8 @@ async function createCombo(
 
     const preparedItems =
       await validateAndPrepareItems(
-        payload.items
+        payload.items,
+        req.tenantId
       );
 
     const normalPrice =
@@ -517,6 +541,7 @@ async function createCombo(
 
     const combo =
       await Combo.create({
+        tenantId: req.tenantId,
         name:
           payload.name,
 
@@ -624,7 +649,8 @@ async function updateCombo(
 
     const preparedItems =
       await validateAndPrepareItems(
-        payload.items
+        payload.items,
+        req.tenantId
       );
 
     const normalPrice =
@@ -633,8 +659,8 @@ async function updateCombo(
       );
 
     const combo =
-      await Combo.findByIdAndUpdate(
-        req.params.id,
+      await Combo.findOneAndUpdate(
+        { _id: req.params.id, tenantId: req.tenantId },
         {
           name:
             payload.name,
@@ -724,9 +750,10 @@ async function deleteCombo(
     }
 
     const combo =
-      await Combo.findByIdAndDelete(
-        req.params.id
-      );
+      await Combo.findOneAndDelete({
+        _id: req.params.id,
+        tenantId: req.tenantId,
+      });
 
     if (!combo) {
       return res

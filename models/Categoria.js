@@ -2,6 +2,11 @@ const mongoose = require("mongoose");
 
 const categoriaSchema = new mongoose.Schema(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tenant",
+      required: true,
+    },
     name: {
       type: String,
       required: true,
@@ -12,14 +17,11 @@ const categoriaSchema = new mongoose.Schema(
     normalizedName: {
       type: String,
       required: true,
-      unique: true,
-      index: true,
     },
 
     active: {
       type: Boolean,
       default: true,
-      index: true,
     },
 
     order: {
@@ -32,6 +34,12 @@ const categoriaSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+categoriaSchema.index(
+  { tenantId: 1, normalizedName: 1 },
+  { unique: true }
+);
+categoriaSchema.index({ tenantId: 1, active: 1, order: 1 });
 
 const Categoria =
   mongoose.models.Categoria ||

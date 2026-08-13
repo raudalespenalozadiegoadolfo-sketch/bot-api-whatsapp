@@ -3,6 +3,7 @@ const path = require("path");
 const Cliente = require("../models/Cliente");
 const Producto = require("../models/Producto");
 const Combo = require("../models/Combo");
+const { getLegacyCatalogTenant } = require("../services/catalogTenantService");
 
 const {
   products: legacyProducts,
@@ -79,9 +80,10 @@ function normalizedText(value) {
     .toLowerCase();
 }
 
-async function loadAvailableProducts() {
+async function loadAvailableProducts(tenantId) {
   const databaseProducts =
     await Producto.find({
+      tenantId,
       active: { $ne: false },
     })
       .sort({
@@ -117,10 +119,12 @@ async function loadAvailableProducts() {
 }
 
 async function loadAvailableCombos(
-  availableProducts
+  availableProducts,
+  tenantId
 ) {
   const combos =
     await Combo.find({
+      tenantId,
       active: { $ne: false },
     })
       .sort({
@@ -315,12 +319,14 @@ async function getMenu(
   next
 ) {
   try {
+    const tenant = await getLegacyCatalogTenant();
     const products =
-      await loadAvailableProducts();
+      await loadAvailableProducts(tenant._id);
 
     const combos =
       await loadAvailableCombos(
-        products
+        products,
+        tenant._id
       );
 
     const categories = [
@@ -560,12 +566,14 @@ async function createStoreOrder(
       });
     }
 
+    const tenant = await getLegacyCatalogTenant();
     const availableProducts =
-      await loadAvailableProducts();
+      await loadAvailableProducts(tenant._id);
 
     const availableCombos =
       await loadAvailableCombos(
-        availableProducts
+        availableProducts,
+        tenant._id
       );
 
     const productById =

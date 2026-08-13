@@ -13,11 +13,14 @@ const optionalPositiveInteger = {
 
 const cuponSchema = new mongoose.Schema(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tenant",
+      required: true,
+    },
     code: {
       type: String,
       required: true,
-      unique: true,
-      index: true,
       trim: true,
       uppercase: true,
       maxlength: 40,
@@ -80,7 +83,6 @@ const cuponSchema = new mongoose.Schema(
     active: {
       type: Boolean,
       default: true,
-      index: true,
     },
 
     usageLimit: {
@@ -117,7 +119,8 @@ const cuponSchema = new mongoose.Schema(
   }
 );
 
-cuponSchema.index({ active: 1, order: 1 });
+cuponSchema.index({ tenantId: 1, code: 1 }, { unique: true });
+cuponSchema.index({ tenantId: 1, active: 1, order: 1 });
 
 const Cupon =
   mongoose.models.Cupon ||

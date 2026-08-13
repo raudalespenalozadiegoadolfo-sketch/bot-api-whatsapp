@@ -6,12 +6,16 @@ const mongoose = require("mongoose");
 
 const productoSchema = new mongoose.Schema(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tenant",
+      required: true,
+    },
     legacyId: {
       type: String,
       default: "",
       trim: true,
       maxlength: 80,
-      index: true,
     },
 
     source: {
@@ -21,7 +25,6 @@ const productoSchema = new mongoose.Schema(
         "admin",
       ],
       default: "admin",
-      index: true,
     },
 
     name: {
@@ -32,7 +35,6 @@ const productoSchema = new mongoose.Schema(
       ],
       trim: true,
       maxlength: 120,
-      index: true,
     },
 
     category: {
@@ -43,7 +45,6 @@ const productoSchema = new mongoose.Schema(
       ],
       trim: true,
       maxlength: 80,
-      index: true,
     },
 
     price: {
@@ -65,7 +66,6 @@ const productoSchema = new mongoose.Schema(
         "drink",
       ],
       default: "food",
-      index: true,
     },
 
     description: {
@@ -89,7 +89,6 @@ const productoSchema = new mongoose.Schema(
     active: {
       type: Boolean,
       default: true,
-      index: true,
     },
 
     order: {
@@ -100,6 +99,18 @@ const productoSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+  }
+);
+
+productoSchema.index({ tenantId: 1, active: 1, category: 1, order: 1 });
+productoSchema.index(
+  { tenantId: 1, source: 1, legacyId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      source: "legacy",
+      legacyId: { $type: "string", $gt: "" },
+    },
   }
 );
 

@@ -20,6 +20,9 @@ function setup(cliente, products = []) {
     "models/Cliente.js": { findOneAndUpdate: async () => cliente },
     "models/Producto.js": { find: () => queryResult(products) },
     "models/Combo.js": { find: () => queryResult([]) },
+    "services/catalogTenantService.js": {
+      getLegacyCatalogTenant: async () => ({ _id: "tenant-legacy" }),
+    },
     "services/whatsappService.js": {
       sendText: async (...args) => sends.push(["text", ...args]),
       sendButtons: async (...args) => sends.push(["buttons", ...args]),

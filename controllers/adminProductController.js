@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const Producto = require("../models/Producto");
+const Categoria = require("../models/Categoria");
 
 function cleanProductPayload(body = {}) {
   return {
@@ -69,12 +70,12 @@ function validateProduct(payload) {
 ========================= */
 
 async function listProducts(
-  _req,
+  req,
   res
 ) {
   try {
     const productos =
-      await Producto.find()
+      await Producto.find({ tenantId: req.tenantId })
         .sort({
           category: 1,
           order: 1,
@@ -124,8 +125,15 @@ async function createProduct(
       });
     }
 
+    const category = await Categoria.findOne({
+      tenantId: req.tenantId,
+      normalizedName: payload.category.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
+      active: { $ne: false },
+    }).lean();
+    if (!category) return res.status(400).json({ ok: false, error: "La categoría no pertenece a este negocio." });
+
     const producto =
-      await Producto.create(payload);
+      await Producto.create({ ...payload, tenantId: req.tenantId });
 
     return res.status(201).json({
       ok: true,
@@ -181,9 +189,16 @@ async function updateProduct(
       });
     }
 
+    const category = await Categoria.findOne({
+      tenantId: req.tenantId,
+      normalizedName: payload.category.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
+      active: { $ne: false },
+    }).lean();
+    if (!category) return res.status(400).json({ ok: false, error: "La categoría no pertenece a este negocio." });
+
     const producto =
-      await Producto.findByIdAndUpdate(
-        req.params.id,
+      await Producto.findOneAndUpdate(
+        { _id: req.params.id, tenantId: req.tenantId },
         payload,
         {
           new: true,
@@ -241,9 +256,10 @@ async function deleteProduct(
     }
 
     const producto =
-      await Producto.findByIdAndDelete(
-        req.params.id
-      );
+      await Producto.findOneAndDelete({
+        _id: req.params.id,
+        tenantId: req.tenantId,
+      });
 
     if (!producto) {
       return res.status(404).json({

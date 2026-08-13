@@ -259,12 +259,12 @@ function validatePayload(
 ========================= */
 
 async function listCoupons(
-  _req,
+  req,
   res
 ) {
   try {
     const coupons =
-      await Cupon.find()
+      await Cupon.find({ tenantId: req.tenantId })
         .sort({
           order: 1,
           createdAt: -1,
@@ -313,6 +313,7 @@ async function createCoupon(
 
     const existing =
       await Cupon.findOne({
+        tenantId: req.tenantId,
         code:
           payload.code,
       }).lean();
@@ -329,6 +330,7 @@ async function createCoupon(
 
     const coupon =
       await Cupon.create({
+        tenantId: req.tenantId,
         ...payload,
         timesUsed: 0,
         customerUsage: [],
@@ -393,6 +395,7 @@ async function updateCoupon(
 
     const duplicate =
       await Cupon.findOne({
+        tenantId: req.tenantId,
         _id: {
           $ne:
             req.params.id,
@@ -417,8 +420,8 @@ async function updateCoupon(
      * ni customerUsage.
      */
     const coupon =
-      await Cupon.findByIdAndUpdate(
-        req.params.id,
+      await Cupon.findOneAndUpdate(
+        { _id: req.params.id, tenantId: req.tenantId },
         {
           $set: payload,
         },
@@ -485,9 +488,10 @@ async function toggleCoupon(
     }
 
     const coupon =
-      await Cupon.findById(
-        req.params.id
-      );
+      await Cupon.findOne({
+        _id: req.params.id,
+        tenantId: req.tenantId,
+      });
 
     if (!coupon) {
       return res
@@ -550,9 +554,10 @@ async function deleteCoupon(
     }
 
     const coupon =
-      await Cupon.findByIdAndDelete(
-        req.params.id
-      );
+      await Cupon.findOneAndDelete({
+        _id: req.params.id,
+        tenantId: req.tenantId,
+      });
 
     if (!coupon) {
       return res

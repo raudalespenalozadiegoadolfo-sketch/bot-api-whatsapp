@@ -81,12 +81,16 @@ const comboItemSchema = new mongoose.Schema(
 
 const comboSchema = new mongoose.Schema(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tenant",
+      required: true,
+    },
     name: {
       type: String,
       required: true,
       trim: true,
       maxlength: 120,
-      index: true,
     },
 
     description: {
@@ -123,7 +127,6 @@ const comboSchema = new mongoose.Schema(
     active: {
       type: Boolean,
       default: true,
-      index: true,
     },
 
     order: {
@@ -136,6 +139,8 @@ const comboSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+comboSchema.index({ tenantId: 1, active: 1, order: 1 });
 
 const Combo =
   mongoose.models.Combo ||

@@ -29,7 +29,8 @@ function normalizeCategoryName(value) {
    SINCRONIZAR CATEGORÍAS
 ========================= */
 
-async function syncLegacyCategories() {
+async function syncLegacyCategories(tenant) {
+  if (!tenant?._id) throw new Error("Se requiere el tenant legacy para sincronizar categorías.");
   const categoryNames = [
     ...new Set(
       products
@@ -59,6 +60,7 @@ async function syncLegacyCategories() {
 
     const category =
       await Categoria.findOne({
+        tenantId: tenant._id,
         normalizedName,
       });
 
@@ -88,6 +90,7 @@ async function syncLegacyCategories() {
     }
 
     await Categoria.create({
+      tenantId: tenant._id,
       name,
       normalizedName,
       active: true,

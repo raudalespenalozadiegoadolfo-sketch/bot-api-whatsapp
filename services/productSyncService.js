@@ -13,7 +13,8 @@ function cleanText(value) {
     .replace(/\s+/g, " ");
 }
 
-async function syncLegacyProducts() {
+async function syncLegacyProducts(tenant) {
+  if (!tenant?._id) throw new Error("Se requiere el tenant legacy para sincronizar productos.");
   let created = 0;
   let updated = 0;
   let existing = 0;
@@ -63,6 +64,7 @@ async function syncLegacyProducts() {
     if (legacyId) {
       existingProduct =
         await Producto.findOne({
+          tenantId: tenant._id,
           legacyId,
         });
     }
@@ -75,6 +77,7 @@ async function syncLegacyProducts() {
     if (!existingProduct) {
       existingProduct =
         await Producto.findOne({
+          tenantId: tenant._id,
           name: {
             $regex:
               `^${escapeRegex(name)}$`,
@@ -158,6 +161,7 @@ async function syncLegacyProducts() {
     }
 
     await Producto.create({
+      tenantId: tenant._id,
       legacyId,
 
       name,

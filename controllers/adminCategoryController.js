@@ -26,12 +26,13 @@ function normalizeCategoryName(value) {
 ========================= */
 
 async function listCategories(
-  _req,
+  req,
   res
 ) {
   try {
     const categorias =
       await Categoria.find({
+        tenantId: req.tenantId,
         active: {
           $ne: false,
         },
@@ -89,6 +90,7 @@ async function createCategory(
 
     const existing =
       await Categoria.findOne({
+        tenantId: req.tenantId,
         normalizedName,
       });
 
@@ -109,6 +111,7 @@ async function createCategory(
 
     const categoria =
       await Categoria.create({
+        tenantId: req.tenantId,
         name,
         normalizedName,
         active: true,

@@ -6,6 +6,7 @@ const { createApp } = require("./app");
 const { createInitialAdmin } = require("./controllers/authController");
 const { syncLegacyCategories } = require("./services/categorySyncService");
 const { syncLegacyProducts } = require("./services/productSyncService");
+const { backfillLegacyCatalogTenant } = require("./services/catalogBackfillService");
 const {
   ensureLegacyBranch,
   ensureLegacyMembership,
@@ -32,8 +33,9 @@ async function startServer() {
         env.WHATSAPP_DISPLAY_PHONE_NUMBER,
     });
 
-    await syncLegacyCategories();
-    await syncLegacyProducts();
+    await backfillLegacyCatalogTenant(tenant);
+    await syncLegacyCategories(tenant);
+    await syncLegacyProducts(tenant);
 
     app.listen(env.PORT, () => {
       console.log(`✅ Marisco Alegre PRO listo en el puerto ${env.PORT}`);
