@@ -6,7 +6,12 @@ const { createApp } = require("./app");
 const { createInitialAdmin } = require("./controllers/authController");
 const { syncLegacyCategories } = require("./services/categorySyncService");
 const { syncLegacyProducts } = require("./services/productSyncService");
-const { ensureLegacyBusiness } = require("./services/legacyTenantService");
+const {
+  ensureLegacyBranch,
+  ensureLegacyMembership,
+  ensureLegacyTenant,
+  ensureLegacyWhatsAppChannel,
+} = require("./services/legacyTenantService");
 
 async function startServer() {
   try {
@@ -15,7 +20,11 @@ async function startServer() {
     await mongoose.connect(env.MONGO_URI);
     console.log("✅ MongoDB conectado correctamente");
 
-    await ensureLegacyBusiness({
+    const tenant = await ensureLegacyTenant();
+    const branch = await ensureLegacyBranch(tenant);
+    const admin = await createInitialAdmin();
+    await ensureLegacyMembership(admin, tenant);
+    await ensureLegacyWhatsAppChannel(tenant, branch, {
       phoneNumberId: env.PHONE_NUMBER_ID,
       whatsappBusinessAccountId:
         env.WHATSAPP_BUSINESS_ACCOUNT_ID,
@@ -23,7 +32,6 @@ async function startServer() {
         env.WHATSAPP_DISPLAY_PHONE_NUMBER,
     });
 
-    await createInitialAdmin();
     await syncLegacyCategories();
     await syncLegacyProducts();
 

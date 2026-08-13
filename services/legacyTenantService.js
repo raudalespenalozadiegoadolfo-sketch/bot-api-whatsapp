@@ -1,6 +1,7 @@
 const Tenant = require("../models/Tenant");
 const Branch = require("../models/Branch");
 const WhatsAppChannel = require("../models/WhatsAppChannel");
+const TenantMembership = require("../models/TenantMembership");
 
 const LEGACY_TENANT = Object.freeze({
   name: "Marisco Alegre",
@@ -90,6 +91,31 @@ async function ensureLegacyWhatsAppChannel(
   );
 }
 
+async function ensureLegacyMembership(user, tenant) {
+  if (!user?._id || !tenant?._id) return null;
+
+  return TenantMembership.findOneAndUpdate(
+    {
+      userId: user._id,
+      tenantId: tenant._id,
+    },
+    {
+      $set: { active: true },
+      $setOnInsert: {
+        userId: user._id,
+        tenantId: tenant._id,
+        role: "owner",
+      },
+    },
+    {
+      new: true,
+      upsert: true,
+      runValidators: true,
+      setDefaultsOnInsert: true,
+    }
+  );
+}
+
 async function ensureLegacyBusiness(options = {}) {
   const tenant = await ensureLegacyTenant();
   const branch = await ensureLegacyBranch(tenant);
@@ -108,6 +134,7 @@ module.exports = {
   LEGACY_TENANT,
   ensureLegacyBranch,
   ensureLegacyBusiness,
+  ensureLegacyMembership,
   ensureLegacyTenant,
   ensureLegacyWhatsAppChannel,
 };

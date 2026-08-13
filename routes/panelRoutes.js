@@ -3,6 +3,7 @@ const express = require("express");
 const env = require("../config/env");
 
 const {
+  requireAdmin,
   requireAdminPage,
 } = require("../middleware/requireAdmin");
 
@@ -25,13 +26,6 @@ const router = express.Router();
 ========================= */
 
 function protectPanel(req, res, next) {
-  if (
-    req.session?.usuario?.rol ===
-      "administrador"
-  ) {
-    return next();
-  }
-
   const receivedKey =
     req.get("x-api-key") || "";
 
@@ -45,9 +39,7 @@ function protectPanel(req, res, next) {
     return next();
   }
 
-  return res.status(401).json({
-    error: "No autorizado",
-  });
+  return requireAdmin(req, res, next);
 }
 
 /* =========================

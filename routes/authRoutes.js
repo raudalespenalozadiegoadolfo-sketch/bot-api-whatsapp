@@ -13,6 +13,9 @@ const {
   csrfToken,
   loginRateLimit,
 } = require("../middleware/security");
+const {
+  requireTenantContext,
+} = require("../middleware/tenantContext");
 
 const router =
   express.Router();
@@ -30,6 +33,7 @@ router.get(
 
 router.get(
   "/me",
+  requireTenantContext,
   currentUser
 );
 

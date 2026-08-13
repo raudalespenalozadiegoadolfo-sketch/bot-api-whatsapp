@@ -2,6 +2,10 @@ const bcrypt = require("bcryptjs");
 
 const Usuario =
   require("../models/Usuario");
+const {
+  selectMembershipForLogin,
+  toSessionTenantContext,
+} = require("../services/tenantMembershipService");
 
 function normalizeUsername(value) {
   return String(value || "")
@@ -35,7 +39,7 @@ async function createInitialAdmin() {
     });
 
   if (existing) {
-    return;
+    return existing;
   }
 
   const passwordHash =
@@ -44,7 +48,7 @@ async function createInitialAdmin() {
       12
     );
 
-  await Usuario.create({
+  const created = await Usuario.create({
     nombre:
       "Administrador principal",
 
@@ -60,6 +64,8 @@ async function createInitialAdmin() {
   console.log(
     "✅ Usuario administrador inicial creado."
   );
+
+  return created;
 }
 
 async function login(req, res) {
@@ -110,6 +116,34 @@ async function login(req, res) {
       });
     }
 
+    const membershipSelection =
+      await selectMembershipForLogin(user._id);
+
+    if (!membershipSelection.selected) {
+      if (
+        membershipSelection.reason ===
+        "tenant_selection_required"
+      ) {
+        return res.status(409).json({
+          ok: false,
+          code: "tenant_selection_required",
+          error: "Selecciona el negocio al que deseas acceder.",
+          tenants: membershipSelection.memberships.map(membership => ({
+            id: String(membership.tenantId._id),
+            name: membership.tenantId.name,
+            slug: membership.tenantId.slug,
+            role: membership.role,
+          })),
+        });
+      }
+
+      return res.status(403).json({
+        ok: false,
+        code: "tenant_access_denied",
+        error: "No tienes acceso a un negocio activo.",
+      });
+    }
+
     user.ultimoAcceso =
       new Date();
 
@@ -136,6 +170,10 @@ async function login(req, res) {
         }
 
         req.session.usuario = sessionUser;
+        req.session.tenantContext =
+          toSessionTenantContext(
+            membershipSelection.membership
+          );
 
         return req.session.save(
           saveError => {
@@ -149,6 +187,14 @@ async function login(req, res) {
             return res.json({
               ok: true,
               usuario: sessionUser,
+              tenant: {
+                id: String(membershipSelection.membership.tenantId._id),
+                name: membershipSelection.membership.tenantId.name,
+                slug: membershipSelection.membership.tenantId.slug,
+              },
+              membership: {
+                role: membershipSelection.membership.role,
+              },
             });
           }
         );
@@ -169,7 +215,7 @@ async function login(req, res) {
 }
 
 function currentUser(req, res) {
-  if (!req.session?.usuario) {
+  if (!req.session?.usuario || !req.tenantMembership) {
     return res.status(401).json({
       ok: false,
       error:
@@ -179,8 +225,20 @@ function currentUser(req, res) {
 
   return res.json({
     ok: true,
-    usuario:
-      req.session.usuario,
+    authenticated: true,
+    user: {
+      id: String(req.authenticatedUser._id),
+      name: req.authenticatedUser.nombre,
+      username: req.authenticatedUser.usuario,
+    },
+    tenant: {
+      id: String(req.tenant._id),
+      name: req.tenant.name,
+      slug: req.tenant.slug,
+    },
+    membership: {
+      role: req.tenantMembership.role,
+    },
   });
 }
 

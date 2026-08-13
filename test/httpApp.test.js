@@ -78,7 +78,7 @@ function clearApplicationModules() {
   }
 }
 
-async function startTestApp() {
+async function startTestApp(options = {}) {
   clearApplicationModules();
 
   const cliente = makeClient();
@@ -87,6 +87,22 @@ async function startTestApp() {
     _id: "user-1", nombre: "Admin", usuario: "admin", rol: "administrador",
     passwordHash, activo: true, async save() {},
   };
+  const tenant = {
+    _id: "tenant-1", name: "Marisco Alegre", slug: "marisco-alegre",
+    status: options.tenantStatus || "active",
+  };
+  const membership = {
+    _id: "membership-1", userId: user._id, tenantId: tenant, role: "owner", active: true,
+  };
+  const memberships = options.membershipCount === 0
+    ? []
+    : options.membershipCount === 2
+      ? [membership, {
+          _id: "membership-2", userId: user._id,
+          tenantId: { _id: "tenant-2", name: "Otro", slug: "otro", status: "active" },
+          role: "manager", active: true,
+        }]
+      : [membership];
   const mocks = {
     "config/env.js": testEnv,
     "models/Cliente.js": {
@@ -99,7 +115,14 @@ async function startTestApp() {
     },
     "models/Combo.js": { find: () => queryResult([]) },
     "models/ProcessedMessage.js": { create: async () => ({}) },
-    "models/Usuario.js": { findOne: async () => user },
+    "models/Usuario.js": { findOne: () => queryResult(user) },
+    "models/Tenant.js": { findById: () => queryResult(tenant) },
+    "models/TenantMembership.js": {
+      find: () => queryResult(memberships),
+      findOne: () => queryResult(
+        membership.active ? { ...membership, tenantId: tenant._id } : null
+      ),
+    },
     "services/whatsappService.js": {
       sendText: async () => ({ ok: true }), sendImage: async () => ({ ok: true }),
       sendButtons: async () => ({ ok: true }), sendList: async () => ({ ok: true }),
@@ -113,6 +136,7 @@ async function startTestApp() {
   const address = server.address();
   return {
     cliente,
+    membership,
     baseUrl: `http://127.0.0.1:${address.port}`,
     async close() {
       await new Promise(resolve => server.close(resolve));
@@ -287,6 +311,49 @@ test("login regenera la sesión y deja inválido el identificador anterior", asy
   assert.notEqual(newCookie, oldCookie);
   assert.equal((await fetch(`${fixture.baseUrl}/api/auth/me`, { headers: { cookie: oldCookie } })).status, 401);
   assert.equal((await fetch(`${fixture.baseUrl}/api/auth/me`, { headers: { cookie: newCookie } })).status, 200);
+});
+
+test("login legacy establece tenant y /api/auth/me devuelve identidad segura", async t => {
+  const fixture = await startTestApp();
+  t.after(() => fixture.close());
+  const authenticated = await login(fixture.baseUrl);
+  assert.equal(authenticated.status, 200);
+  const cookie = cookieFrom(authenticated);
+  const response = await fetch(`${fixture.baseUrl}/api/auth/me`, { headers: { cookie } });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    ok: true,
+    authenticated: true,
+    user: { id: "user-1", name: "Admin", username: "admin" },
+    tenant: { id: "tenant-1", name: "Marisco Alegre", slug: "marisco-alegre" },
+    membership: { role: "owner" },
+  });
+});
+
+test("membership revocado después del login invalida acceso administrativo", async t => {
+  const fixture = await startTestApp();
+  t.after(() => fixture.close());
+  const authenticated = await login(fixture.baseUrl);
+  const cookie = cookieFrom(authenticated);
+  fixture.membership.active = false;
+  assert.equal((await fetch(`${fixture.baseUrl}/api/auth/me`, { headers: { cookie } })).status, 403);
+  assert.equal((await fetch(`${fixture.baseUrl}/api/admin/productos`, { headers: { cookie } })).status, 403);
+});
+
+test("login deniega cero memberships y exige selección para múltiples", async t => {
+  const empty = await startTestApp({ membershipCount: 0 });
+  t.after(() => empty.close());
+  const denied = await login(empty.baseUrl);
+  assert.equal(denied.status, 403);
+  assert.equal((await denied.json()).code, "tenant_access_denied");
+
+  const multiple = await startTestApp({ membershipCount: 2 });
+  t.after(() => multiple.close());
+  const selection = await login(multiple.baseUrl);
+  assert.equal(selection.status, 409);
+  const body = await selection.json();
+  assert.equal(body.code, "tenant_selection_required");
+  assert.equal(body.tenants.length, 2);
 });
 
 test("CSRF exige token válido para mutaciones administrativas por sesión", async t => {
