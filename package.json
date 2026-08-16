@@ -8,11 +8,12 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "check": "node --check server.js",
-    "test": "node --test --test-concurrency=1",
-    "test:watch": "node --test --test-concurrency=1 --watch",
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
+    "test:watch": "node --test --test-concurrency=1 --watch \"test/*.test.js\"",
     "audit:indexes": "node scripts/audit-indexes.js",
     "migrate:indexes": "node scripts/migrate-legacy-indexes.js",
-    "migrate:indexes:dry": "node scripts/migrate-legacy-indexes.js"
+    "migrate:indexes:dry": "node scripts/migrate-legacy-indexes.js",
+    "migrate:legacy-orders": "node scripts/backfill-legacy-orders.js"
   },
   "engines": {
     "node": ">=20"
