@@ -11,6 +11,7 @@
     "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
     "test:watch": "node --test --test-concurrency=1 --watch \"test/*.test.js\"",
     "audit:indexes": "node scripts/audit-indexes.js",
+    "staging:legacy-order-index": "node scripts/prepare-legacy-order-index-staging.js",
     "migrate:indexes": "node scripts/migrate-legacy-indexes.js",
     "migrate:indexes:dry": "node scripts/migrate-legacy-indexes.js",
     "migrate:legacy-orders": "node scripts/backfill-legacy-orders.js"
