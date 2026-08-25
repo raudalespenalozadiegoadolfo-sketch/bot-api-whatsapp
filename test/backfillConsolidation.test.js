@@ -13,12 +13,17 @@ const projectRoot = path.join(__dirname, "..");
 test("solo migrate:legacy-orders expone la migracion de historial", () => {
   const packageJson = require("../package.json");
   const migrationScripts = Object.entries(packageJson.scripts).filter(([name, command]) =>
+    /^migrate:/.test(name) &&
     /orders?-history|legacy-orders|orderHistoryMigration|backfill-legacy-orders/.test(`${name} ${command}`)
   );
 
   assert.deepEqual(migrationScripts, [
     ["migrate:legacy-orders", "node scripts/backfill-legacy-orders.js"],
   ]);
+  assert.equal(
+    packageJson.scripts["audit:legacy-orders:production"],
+    "node scripts/audit-legacy-orders-production.js"
+  );
 });
 
 test("el CLI autorizado delega exclusivamente al servicio oficial", () => {
