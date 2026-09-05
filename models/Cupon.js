@@ -16,7 +16,7 @@ const cuponSchema = new mongoose.Schema(
     tenantId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Tenant",
-      required: true,
+      default: null,
     },
     code: {
       type: String,

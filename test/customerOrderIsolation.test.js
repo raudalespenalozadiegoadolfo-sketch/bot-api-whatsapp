@@ -16,7 +16,9 @@ test("Cliente permite mismo teléfono por tenant y conserva datos independientes
   assert.equal(second.validateSync(), undefined);
   assert.notDeepEqual(first.direccion, second.direccion);
   assert.notDeepEqual(first.pedidos, second.pedidos);
-  assert.ok(Cliente.schema.indexes().some(([keys, options]) => keys.tenantId === 1 && keys.numero === 1 && options.unique));
+  assert.equal(Cliente.schema.path("tenantId").options.default, null);
+  assert.equal(Cliente.schema.path("branchId").options.default, null);
+  assert.ok(Cliente.schema.indexes().some(([keys, options]) => keys.numero === 1 && options.unique));
   assert.equal(Cliente.schema.path("numero").options.unique, undefined);
 });
 

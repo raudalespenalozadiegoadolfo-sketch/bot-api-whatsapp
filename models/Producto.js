@@ -9,7 +9,7 @@ const productoSchema = new mongoose.Schema(
     tenantId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Tenant",
-      required: true,
+      default: null,
     },
     legacyId: {
       type: String,

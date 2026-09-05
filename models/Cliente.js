@@ -23,7 +23,7 @@ const historialSchema = new mongoose.Schema({
 }, { _id: true });
 
 const clienteSchema = new mongoose.Schema({
-  tenantId: { type: mongoose.Schema.Types.ObjectId, ref: "Tenant", required: true },
+  tenantId: { type: mongoose.Schema.Types.ObjectId, ref: "Tenant", default: null, },
   branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch", default: null },
   numero: { type: String, required: true, trim: true },
   nombre: { type: String, default: "" },

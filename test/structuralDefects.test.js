@@ -29,8 +29,9 @@ test("Cupon expone el modelo y conserva el contrato del módulo administrativo",
   assert.equal(coupon.timesUsed, 0);
   assert.deepEqual(coupon.customerUsage, []);
   assert.equal(coupon.order, 0);
+  assert.equal(Cupon.schema.path("tenantId").options.default, null);
   assert.ok(Cupon.schema.indexes().some(([keys, options]) =>
-    keys.tenantId === 1 && keys.code === 1 && options.unique
+    keys.code === 1 && options.unique
   ));
 });
 

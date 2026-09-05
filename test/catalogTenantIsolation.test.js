@@ -18,16 +18,79 @@ function chain(value) {
   };
 }
 
-test("schemas permiten nombres equivalentes por tenant y declaran unicidad compuesta", () => {
+test("schemas aceptan tenantId sin cambiar todavía los índices legacy", () => {
   assert.equal(new Categoria({ tenantId: tenantA, name: "Bebidas", normalizedName: "bebidas" }).validateSync(), undefined);
   assert.equal(new Categoria({ tenantId: tenantB, name: "Bebidas", normalizedName: "bebidas" }).validateSync(), undefined);
   assert.equal(new Producto({ tenantId: tenantA, name: "Coca Cola", category: "Bebidas", price: 30 }).validateSync(), undefined);
   assert.equal(new Producto({ tenantId: tenantB, name: "Coca Cola", category: "Bebidas", price: 30 }).validateSync(), undefined);
   assert.ok(Categoria.schema.indexes().some(([keys, options]) => keys.tenantId === 1 && keys.normalizedName === 1 && options.unique));
-  assert.ok(Cupon.schema.indexes().some(([keys, options]) => keys.tenantId === 1 && keys.code === 1 && options.unique));
+  assert.equal(Producto.schema.path("tenantId").options.default, null);
+  assert.equal(Combo.schema.path("tenantId").options.default, null);
+  assert.equal(Cupon.schema.path("tenantId").options.default, null);
+  assert.ok(Cupon.schema.indexes().some(([keys, options]) =>
+    keys.tenantId === 1 && keys.code === 1 && options.unique
+  ));
   assert.equal(Cupon.schema.path("code").options.unique, undefined);
   assert.equal(Producto.schema.path("legacyId").options.unique, undefined);
-  assert.equal(Combo.schema.path("tenantId").options.required, true);
+});
+
+test("contrato branch-aware: solo Cliente conserva branchId en este alcance", () => {
+  const Cliente = require("../models/Cliente");
+
+  assert.equal(Cliente.schema.path("tenantId").options.ref, "Tenant");
+  assert.equal(Cliente.schema.path("branchId").options.ref, "Branch");
+  assert.equal(Producto.schema.path("branchId"), undefined);
+  assert.equal(Combo.schema.path("branchId"), undefined);
+  assert.equal(Cupon.schema.path("branchId"), undefined);
+});
+
+test("auditoría de índices: se conservan unicidades tenant-scoped sin modificarlas", () => {
+  const Cliente = require("../models/Cliente");
+  const clienteNumeroIndex = Cliente.schema.indexes().some(([keys, options]) =>
+    keys.tenantId === 1 && keys.numero === 1 && options.unique
+  );
+  const cuponCodeIndex = Cupon.schema.indexes().some(([keys, options]) =>
+    keys.tenantId === 1 && keys.code === 1 && options.unique
+  );
+
+  assert.equal(clienteNumeroIndex, true);
+  assert.equal(cuponCodeIndex, true);
+  assert.equal(Producto.schema.path("legacyId").options.unique, undefined);
+  assert.equal(Combo.schema.path("name").options.unique, undefined);
+});
+
+test("Cliente persiste tenantId y branchId, y documentos legacy siguen validando", () => {
+  const tenant = new mongoose.Types.ObjectId();
+  const branch = new mongoose.Types.ObjectId();
+  const scoped = new (require("../models/Cliente"))({
+    tenantId: tenant,
+    branchId: branch,
+    numero: "5215512345678",
+  });
+  const legacy = new (require("../models/Cliente"))({ numero: "5215512345679" });
+
+  assert.equal(String(scoped.toObject().tenantId), String(tenant));
+  assert.equal(String(scoped.toObject().branchId), String(branch));
+  assert.equal(scoped.validateSync(), undefined);
+  assert.equal(legacy.validateSync(), undefined);
+});
+
+test("Producto, Combo y Cupon persisten tenantId y aceptan documentos legacy", () => {
+  const tenant = new mongoose.Types.ObjectId();
+  const product = new Producto({ tenantId: tenant, name: "Agua", category: "Bebidas", price: 30 });
+  const combo = new Combo({ tenantId: tenant, name: "Combo", comboPrice: 50 });
+  const coupon = new Cupon({ tenantId: tenant, code: "VERANO", type: "fixed", value: 10 });
+  const legacyProduct = new Producto({ name: "Agua", category: "Bebidas", price: 30 });
+  const legacyCombo = new Combo({ name: "Combo", comboPrice: 50 });
+  const legacyCoupon = new Cupon({ code: "LEGACY", type: "fixed", value: 10 });
+
+  [product, combo, coupon].forEach(document => {
+    assert.equal(String(document.toObject().tenantId), String(tenant));
+    assert.equal(document.validateSync(), undefined);
+  });
+  [legacyProduct, legacyCombo, legacyCoupon].forEach(document => {
+    assert.equal(document.validateSync(), undefined);
+  });
 });
 
 test("listados administrativos filtran por req.tenantId e ignoran body/query", async () => {

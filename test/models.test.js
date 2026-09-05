@@ -10,9 +10,14 @@ const tenantId = new mongoose.Types.ObjectId();
 
 test("Cliente aplica estados iniciales y valida enums", async () => {
   const cliente = new Cliente({ tenantId, numero: "5215512345678" });
+  const branchId = new mongoose.Types.ObjectId();
+  cliente.branchId = branchId;
+  assert.equal(String(cliente.toObject().tenantId), String(tenantId));
+  assert.equal(String(cliente.toObject().branchId), String(branchId));
   assert.equal(cliente.paso, "inicio");
   assert.equal(cliente.estadoPedido, "sin_pedido");
   assert.deepEqual(cliente.pedidos, []);
+  assert.equal(new Cliente({ numero: "5215512345679" }).validateSync(), undefined);
   cliente.estadoPedido = "estado_inexistente";
   assert.ok(cliente.validateSync().errors.estadoPedido);
 });
@@ -24,7 +29,9 @@ test("Producto requiere nombre, categoría y precio no negativo", () => {
   assert.ok(errors.category);
   assert.ok(errors.price);
   const valid = new Producto({ tenantId, name: "Agua", category: "Bebidas", price: 35 });
+  assert.equal(String(valid.toObject().tenantId), String(tenantId));
   assert.equal(valid.validateSync(), undefined);
+  assert.equal(new Producto({ name: "Legacy", category: "Bebidas", price: 35 }).validateSync(), undefined);
 });
 
 test("Categoria exige normalizedName y su índice es único", () => {
@@ -39,8 +46,16 @@ test("Combo valida cantidad y referencia Producto", () => {
     tenantId, name: "Combo", comboPrice: 100,
     items: [{ mode: "product", productId: new mongoose.Types.ObjectId(), cantidad: 21 }],
   });
+  assert.equal(String(combo.toObject().tenantId), String(tenantId));
   assert.ok(combo.validateSync().errors["items.0.cantidad"]);
   assert.equal(Combo.schema.path("items").schema.path("productId").options.ref, "Producto");
+});
+
+test("Combo y Cupon legacy siguen validando sin tenantId", () => {
+  const combo = new Combo({ name: "Combo legacy", comboPrice: 100 });
+  const coupon = new (require("../models/Cupon"))({ code: "LEGACY", type: "fixed", value: 10 });
+  assert.equal(combo.validateSync(), undefined);
+  assert.equal(coupon.validateSync(), undefined);
 });
 
 test("ProcessedMessage declara messageId único y TTL de siete días", () => {
