@@ -3,17 +3,10 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const env = require("./config/env");
 const { createApp } = require("./app");
-const { createInitialAdmin } = require("./controllers/authController");
-const { syncLegacyCategories } = require("./services/categorySyncService");
-const { syncLegacyProducts } = require("./services/productSyncService");
-const { backfillLegacyCatalogTenant } = require("./services/catalogBackfillService");
-const { backfillLegacyCustomers } = require("./services/customerBackfillService");
 const {
-  ensureLegacyBranch,
-  ensureLegacyMembership,
-  ensureLegacyTenant,
-  ensureLegacyWhatsAppChannel,
-} = require("./services/legacyTenantService");
+  runLegacyStartupBootstrap,
+  shouldRunLegacyStartupBootstrap,
+} = require("./services/legacyStartupBootstrapService");
 
 async function startServer() {
   try {
@@ -22,22 +15,15 @@ async function startServer() {
     await mongoose.connect(env.MONGO_URI);
     console.log("✅ MongoDB conectado correctamente");
 
-    const tenant = await ensureLegacyTenant();
-    const branch = await ensureLegacyBranch(tenant);
-    const admin = await createInitialAdmin();
-    await ensureLegacyMembership(admin, tenant);
-    await ensureLegacyWhatsAppChannel(tenant, branch, {
-      phoneNumberId: env.PHONE_NUMBER_ID,
-      whatsappBusinessAccountId:
-        env.WHATSAPP_BUSINESS_ACCOUNT_ID,
-      displayPhoneNumber:
-        env.WHATSAPP_DISPLAY_PHONE_NUMBER,
-    });
-
-    await backfillLegacyCatalogTenant(tenant);
-    await backfillLegacyCustomers(tenant);
-    await syncLegacyCategories(tenant);
-    await syncLegacyProducts(tenant);
+    if (shouldRunLegacyStartupBootstrap(process.env.LEGACY_STARTUP_BOOTSTRAP)) {
+      await runLegacyStartupBootstrap({
+        phoneNumberId: env.PHONE_NUMBER_ID,
+        whatsappBusinessAccountId:
+          env.WHATSAPP_BUSINESS_ACCOUNT_ID,
+        displayPhoneNumber:
+          env.WHATSAPP_DISPLAY_PHONE_NUMBER,
+      });
+    }
 
     app.listen(env.PORT, () => {
       console.log(`✅ Marisco Alegre PRO listo en el puerto ${env.PORT}`);

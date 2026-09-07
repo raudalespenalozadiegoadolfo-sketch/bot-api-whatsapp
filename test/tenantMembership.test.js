@@ -153,24 +153,12 @@ test("bootstrap legacy asegura membership owner activo mediante upsert estable",
   context.restore();
 });
 
-test("arranque asegura tenant, branch, admin, membership y canal en orden", async () => {
+test("bootstrap legacy conserva el orden exacto de operaciones", async () => {
   const calls = [];
   const tenant = { _id: "tenant-1" };
   const branch = { _id: "branch-1" };
   const admin = { _id: "user-1" };
-  const context = loadWithMocks("server.js", {
-    "config/env.js": {
-      MONGO_URI: "mongodb://test.invalid/test",
-      PORT: 0,
-      PHONE_NUMBER_ID: "phone-1",
-      WHATSAPP_BUSINESS_ACCOUNT_ID: "",
-      WHATSAPP_DISPLAY_PHONE_NUMBER: "",
-    },
-    "app.js": {
-      createApp: () => ({
-        listen: (_port, callback) => { calls.push("listen"); callback(); },
-      }),
-    },
+  const context = loadWithMocks("services/legacyStartupBootstrapService.js", {
     "controllers/authController.js": {
       createInitialAdmin: async () => { calls.push("admin"); return admin; },
     },
@@ -204,14 +192,72 @@ test("arranque asegura tenant, branch, admin, membership y canal en orden", asyn
         calls.push("channel");
       },
     },
-    "node_modules/mongoose/index.js": {
-      connect: async () => { calls.push("mongo"); },
-    },
   });
-  await context.loaded.startServer();
+  await context.loaded.runLegacyStartupBootstrap({
+    phoneNumberId: "phone-1",
+    whatsappBusinessAccountId: "",
+    displayPhoneNumber: "",
+  });
   assert.deepEqual(calls, [
-    "mongo", "tenant", "branch", "admin", "membership",
-    "channel", "backfill", "customers", "categories", "products", "listen",
+    "tenant", "branch", "admin", "membership", "channel",
+    "backfill", "customers", "categories", "products",
   ]);
+  context.restore();
+});
+
+test("flag legacy ausente o false no ejecuta bootstrap y true sí lo habilita", () => {
+  const context = loadWithMocks("services/legacyStartupBootstrapService.js", {});
+  assert.equal(context.loaded.shouldRunLegacyStartupBootstrap(undefined), false);
+  assert.equal(context.loaded.shouldRunLegacyStartupBootstrap(""), false);
+  assert.equal(context.loaded.shouldRunLegacyStartupBootstrap("false"), false);
+  assert.equal(context.loaded.shouldRunLegacyStartupBootstrap("TRUE"), false);
+  assert.equal(context.loaded.shouldRunLegacyStartupBootstrap("true"), true);
+  context.restore();
+});
+
+test("arranque normal sin flag sólo construye, conecta y escucha", async () => {
+  for (const flag of [undefined, "false"]) {
+    const calls = [];
+    const previousFlag = process.env.LEGACY_STARTUP_BOOTSTRAP;
+    if (flag === undefined) delete process.env.LEGACY_STARTUP_BOOTSTRAP;
+    else process.env.LEGACY_STARTUP_BOOTSTRAP = flag;
+
+    const context = loadWithMocks("server.js", {
+      "config/env.js": { MONGO_URI: "mongodb://test.invalid/test", PORT: 0 },
+      "app.js": {
+        createApp: () => {
+          calls.push("app");
+          return { listen: (_port, callback) => { calls.push("listen"); callback(); } };
+        },
+      },
+      "services/legacyStartupBootstrapService.js": {
+        shouldRunLegacyStartupBootstrap: value => value === "true",
+        runLegacyStartupBootstrap: async () => { calls.push("legacy"); },
+      },
+      "node_modules/mongoose/index.js": {
+        connect: async () => { calls.push("mongo"); },
+      },
+    });
+
+    await context.loaded.startServer();
+    assert.deepEqual(calls, ["app", "mongo", "listen"]);
+    context.restore();
+    if (previousFlag === undefined) delete process.env.LEGACY_STARTUP_BOOTSTRAP;
+    else process.env.LEGACY_STARTUP_BOOTSTRAP = previousFlag;
+  }
+});
+
+test("fallo del bootstrap legacy detiene la cadena", async () => {
+  const calls = [];
+  const context = loadWithMocks("services/legacyStartupBootstrapService.js", {});
+  await assert.rejects(
+    () => context.loaded.runLegacyStartupBootstrap({
+      ensureTenant: async () => { calls.push("tenant"); throw new Error("legacy failure"); },
+      ensureBranch: async () => { calls.push("branch"); },
+      createAdmin: async () => { calls.push("admin"); },
+    }),
+    /legacy failure/
+  );
+  assert.deepEqual(calls, ["tenant"]);
   context.restore();
 });
